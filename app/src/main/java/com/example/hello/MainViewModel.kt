@@ -6,13 +6,19 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
+import com.example.hello.command.CommandDispatcher
+import com.example.hello.command.GetScheduleCommandHandler
+import com.example.hello.command.SignCourseCommandHandler
 import com.example.hello.model.Course
 import com.example.hello.service.ApiService
 import com.example.hello.service.ChatWebSocketService
-import com.example.hello.command.CommandDispatcher
-import com.google.gson.Gson
+import com.example.hello.service.IclassApiService
+import com.google.gson.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.lang.reflect.Type
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import okio.ByteString
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -36,6 +42,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _toastMessage = MutableLiveData<String>()
     val toastMessage: LiveData<String> = _toastMessage
 
+    // 防止并发请求的标志
+    private var isRequestInProgress = false
+
     // WebSocket State
     private val _webSocketStatus = MutableLiveData<WebSocketStatus>()
     val webSocketStatus: LiveData<WebSocketStatus> = _webSocketStatus
@@ -46,20 +55,48 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // Services
     private val apiService = ApiService(application)
+    private val iclassApiService = IclassApiService(application)
     // 临时跳过 TLS 证书校验（仅用于测试环境，正式环境务必改回 false）
     private val ALLOW_INSECURE_TLS = true
     private val chatWebSocketService = ChatWebSocketService(allowInsecureForDebug = ALLOW_INSECURE_TLS)
 
     private val commandDispatcher = CommandDispatcher()
-    private val gson = Gson()
 
     // Data
     private var currentUserId: String? = null
     private var currentSessionId: String? = null
-
+    // 创建支持LocalDateTime的Gson实例
+    private val gson = GsonBuilder()
+        .registerTypeAdapter(LocalDateTime::class.java, LocalDateTimeSerializer())
+        .registerTypeAdapter(LocalDateTime::class.java, LocalDateTimeDeserializer())
+        .create()
+    
     init {
+        // 注册命令处理器
+        commandDispatcher.registerHandler(GetScheduleCommandHandler(application))
+        commandDispatcher.registerHandler(SignCourseCommandHandler(application))
         _webSocketStatus.value = WebSocketStatus.CONNECTING
         connectWebSocket()
+    }
+    
+    // LocalDateTime序列化器
+    private class LocalDateTimeSerializer : JsonSerializer<LocalDateTime> {
+        private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+        
+        override fun serialize(src: LocalDateTime?, typeOfSrc: Type?, context: JsonSerializationContext?): JsonElement {
+            return JsonPrimitive(src?.format(formatter))
+        }
+    }
+    
+    // LocalDateTime反序列化器
+    private class LocalDateTimeDeserializer : JsonDeserializer<LocalDateTime> {
+        private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+        
+        override fun deserialize(json: JsonElement?, typeOfT: Type?, context: JsonDeserializationContext?): LocalDateTime? {
+            return json?.asString?.let {
+                LocalDateTime.parse(it, formatter)
+            }
+        }
     }
 
     private fun connectWebSocket() {
@@ -115,34 +152,43 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun getClassInfo(studentId: String, date: String) {
         if (studentId.isEmpty() || date.isEmpty()) {
-            _toastMessage.value = "请输入学号和日期"
+            _toastMessage.postValue("请输入学号和日期")
             return
         }
 
-        _isLoading.value = true
-        _isEmpty.value = false
+        if (isRequestInProgress) {
+            _toastMessage.postValue("操作进行中，请稍候")
+            return
+        }
 
-        apiService.login(studentId, object : ApiService.OnLoginListener {
+        isRequestInProgress = true
+        _isLoading.postValue(true)
+        _isEmpty.postValue(false)
+
+        iclassApiService.login(studentId, object : IclassApiService.OnLoginListener {
             override fun onSuccess(userId: String, sessionId: String, realName: String, academyName: String) {
                 currentUserId = userId
                 currentSessionId = sessionId
                 _userInfo.postValue("$realName - $academyName")
 
                 val dateStr = date.replace("-", "")
-                apiService.getCourseSchedule(userId, sessionId, dateStr, object : ApiService.OnCourseScheduleListener {
+                iclassApiService.getCourseSchedule(userId, sessionId, dateStr, object : IclassApiService.OnCourseScheduleListener {
                     override fun onSuccess(courses: List<Course>) {
                         _isLoading.postValue(false)
                         _courses.postValue(courses)
+                        isRequestInProgress = false
                     }
 
                     override fun onEmpty() {
                         _isLoading.postValue(false)
                         _isEmpty.postValue(true)
+                        isRequestInProgress = false
                     }
 
                     override fun onFailure(error: String) {
                         _isLoading.postValue(false)
                         _error.postValue(error)
+                        isRequestInProgress = false
                     }
                 })
             }
@@ -150,12 +196,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             override fun onFailure(error: String) {
                 _isLoading.postValue(false)
                 _error.postValue(error)
+                isRequestInProgress = false
             }
         })
     }
 
-    fun signClass(studentId: String, courseId: String, date: String) {
-        apiService.signClass(studentId, courseId, object : ApiService.OnSignListener {
+    fun signClass(studentId: String, courseId: Int, date: String) {
+        iclassApiService.signClass(studentId, courseId, object : IclassApiService.OnSignListener {
             override fun onSuccess() {
                 _toastMessage.postValue("签到成功")
                 // 刷新课程列表
@@ -165,7 +212,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             override fun onFailure(error: String) {
                 _error.postValue(error)
             }
-        })
+        }, apiService.token)
     }
 
     override fun onCleared() {

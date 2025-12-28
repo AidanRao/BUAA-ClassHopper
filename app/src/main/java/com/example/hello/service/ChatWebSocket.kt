@@ -86,7 +86,7 @@ class ChatWebSocketService(
         }
 
         currentToken = token
-        val url = "wss://101.42.43.228/chat?token=$token"
+        val url = "wss://101.42.43.228/push/command?token=$token"
         val request = Request.Builder()
             .url(url)
             .build()
