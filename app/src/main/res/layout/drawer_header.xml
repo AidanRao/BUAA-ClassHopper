@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:gravity="center"
+    android:background="@android:color/white">
+
+    <!-- 用户头像 -->
+    <ImageView
+        android:id="@+id/avatar_image"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:scaleType="centerCrop"
+        android:background="@android:drawable/ic_menu_gallery"
+        android:layout_marginBottom="8dp" />
+
+    <!-- 学生ID -->
+    <TextView
+        android:id="@+id/student_id_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="--"
+        android:textSize="16sp"
+        android:textColor="@android:color/black"
+        android:layout_marginBottom="4dp" />
+
+    <!-- 认证状态 -->
+    <TextView
+        android:id="@+id/verified_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="未认证"
+        android:textSize="14sp"
+        android:textColor="@android:color/darker_gray" />
+</LinearLayout>

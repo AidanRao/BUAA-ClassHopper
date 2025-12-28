@@ -101,6 +101,7 @@ class ApiService(private val context: Context) {
         
         // 构建请求
         val authUrl = "https://101.42.43.228/api/user/third-auth"
+//        val authUrl = "http://10.0.2.2:8088/user/third-auth"
         val request = Request.Builder()
             .url(authUrl)
             .post(requestBody)
@@ -140,6 +141,190 @@ class ApiService(private val context: Context) {
                     }
                 } catch (e: Exception) {
                     listener.onFailure("解析鉴权响应失败: ${e.message}")
+                    e.printStackTrace()
+                }
+            }
+        })
+    }
+    
+    // 用户信息相关接口和数据模型
+    interface OnUserInfoListener {
+        fun onSuccess(userInfo: UserInfoResponse.UserInfoData)
+        fun onFailure(error: String)
+    }
+    
+    data class UserInfoResponse(
+        val code: Int,
+        val msg: String,
+        val data: UserInfoData?
+    ) {
+        data class UserInfoData(
+            val id: String,
+            val username: String,
+            val avatar: String?,
+            val createTime: String,
+            val gender: String,
+            val studentId: String,
+            val verified: Boolean,
+            val joinedTeamCount: Int,
+            val createdTeamCount: Int,
+            val role: String,
+            val appKey: String?
+        )
+    }
+    
+    // 获取用户信息的方法
+    fun getUserInfo(token: String, listener: OnUserInfoListener) {
+        val userInfoUrl = "https://101.42.43.228/api/user/info"
+        val request = Request.Builder()
+            .url(userInfoUrl)
+            .get()
+            .addHeader("Authorization", token)
+            .build()
+        
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                listener.onFailure("获取用户信息失败: ${e.message}")
+                e.printStackTrace()
+            }
+            
+            override fun onResponse(call: Call, response: Response) {
+                try {
+                    val responseData = response.body?.string()
+                    Log.i("UserInfo", responseData.toString())
+                    val userInfoResponse = gson.fromJson(responseData, UserInfoResponse::class.java)
+                    
+                    if (userInfoResponse.code == 1 && userInfoResponse.data != null) {
+                        listener.onSuccess(userInfoResponse.data)
+                    } else {
+                        listener.onFailure("获取用户信息失败: ${userInfoResponse.msg}")
+                    }
+                } catch (e: Exception) {
+                    listener.onFailure("解析用户信息响应失败: ${e.message}")
+                    e.printStackTrace()
+                }
+            }
+        })
+    }
+    
+    // 公告相关接口和数据模型
+    interface OnAnnouncementsListener {
+        fun onSuccess(announcements: List<AnnouncementData>)
+        fun onFailure(error: String)
+    }
+    
+    // 公告详情监听器接口
+    interface OnAnnouncementDetailListener {
+        fun onSuccess(announcementDetail: AnnouncementDetailData)
+        fun onFailure(error: String)
+    }
+    
+    data class AnnouncementResponse(
+        val code: Int,
+        val msg: String,
+        val data: List<AnnouncementData>
+    )
+    
+    // 公告详情响应数据模型
+    data class AnnouncementDetailResponse(
+        val code: Int,
+        val msg: String,
+        val data: AnnouncementDetailData?
+    )
+    
+    data class AnnouncementData(
+        val id: String,
+        val title: String,
+        val content: String?,
+        val posterUserId: String?,
+        val cover: String?,
+        val createTime: String,
+        val updateTime: String?,
+        val deleted: String?,
+        val targetUserType: String?,
+        val targetAppKeys: String?,
+        val posterUsername: String?, // 发布者名称
+        val posterAvatar: String?    // 发布者头像
+    )
+    
+    // 公告详情数据模型
+    data class AnnouncementDetailData(
+        val id: String,
+        val title: String,
+        val content: String?,
+        val posterUserId: String?,
+        val cover: String?,
+        val createTime: String,
+        val updateTime: String?,
+        val deleted: Boolean,
+        val targetUserType: String?,
+        val targetAppKeys: String?,
+        val posterUsername: String?,
+        val posterAvatar: String?
+    )
+    
+    // 获取公告列表的方法
+    fun getAnnouncements(token: String, listener: OnAnnouncementsListener) {
+        val announcementUrl = "https://101.42.43.228/api/message/announcement/list"
+        val request = Request.Builder()
+            .url(announcementUrl)
+            .get()
+            .addHeader("Authorization", token)
+            .build()
+        
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                listener.onFailure("获取公告列表失败: ${e.message}")
+                e.printStackTrace()
+            }
+            
+            override fun onResponse(call: Call, response: Response) {
+                try {
+                    val responseData = response.body?.string()
+                    Log.i("Announcement", responseData.toString())
+                    val announcementResponse = gson.fromJson(responseData, AnnouncementResponse::class.java)
+                    
+                    if (announcementResponse.code == 1) {
+                        listener.onSuccess(announcementResponse.data)
+                    } else {
+                        listener.onFailure("获取公告列表失败: ${announcementResponse.msg}")
+                    }
+                } catch (e: Exception) {
+                    listener.onFailure("解析公告响应失败: ${e.message}")
+                    e.printStackTrace()
+                }
+            }
+        })
+    }
+    
+    // 获取公告详情的方法
+    fun getAnnouncementDetail(token: String, announcementId: String, listener: OnAnnouncementDetailListener) {
+        val announcementDetailUrl = "https://101.42.43.228/api/message/announcement/$announcementId"
+        val request = Request.Builder()
+            .url(announcementDetailUrl)
+            .get()
+            .addHeader("Authorization", token)
+            .build()
+        
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                listener.onFailure("获取公告详情失败: ${e.message}")
+                e.printStackTrace()
+            }
+            
+            override fun onResponse(call: Call, response: Response) {
+                try {
+                    val responseData = response.body?.string()
+                    Log.i("AnnouncementDetail", responseData.toString())
+                    val announcementDetailResponse = gson.fromJson(responseData, AnnouncementDetailResponse::class.java)
+                    
+                    if (announcementDetailResponse.code == 1 && announcementDetailResponse.data != null) {
+                        listener.onSuccess(announcementDetailResponse.data)
+                    } else {
+                        listener.onFailure("获取公告详情失败: ${announcementDetailResponse.msg}")
+                    }
+                } catch (e: Exception) {
+                    listener.onFailure("解析公告详情响应失败: ${e.message}")
                     e.printStackTrace()
                 }
             }

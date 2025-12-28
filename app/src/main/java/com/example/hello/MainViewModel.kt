@@ -65,6 +65,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // Data
     private var currentUserId: String? = null
     private var currentSessionId: String? = null
+    private var token: String? = null
+    private var expireAt: Long? = null
     // 创建支持LocalDateTime的Gson实例
     private val gson = GsonBuilder()
         .registerTypeAdapter(LocalDateTime::class.java, LocalDateTimeSerializer())
@@ -218,5 +220,64 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     override fun onCleared() {
         super.onCleared()
         chatWebSocketService.close()
+    }
+    
+    // 用户信息相关
+    private val _userProfile = MutableLiveData<ApiService.UserInfoResponse.UserInfoData>()
+    val userProfile: LiveData<ApiService.UserInfoResponse.UserInfoData> = _userProfile
+    
+    // 获取用户信息
+    fun fetchUserProfile() {
+        if (token.isNullOrEmpty()) {
+            apiService.getAuthToken(object : ApiService.OnAuthListener {
+                override fun onSuccess(token: String, expireAt: Long) {
+                    this@MainViewModel.token = token
+                    this@MainViewModel.expireAt = expireAt
+                    apiService.getUserInfo(token, object : ApiService.OnUserInfoListener {
+                        override fun onSuccess(userInfo: ApiService.UserInfoResponse.UserInfoData) {
+                            _userProfile.postValue(userInfo)
+                        }
+                        
+                        override fun onFailure(error: String) {
+                            Log.e("MainViewModel", "获取用户信息失败: $error")
+                        }
+                    })
+                }
+                
+                override fun onFailure(error: String) {
+                    Log.e("MainViewModel", "获取token失败: $error")
+                }
+            })
+        } else {
+            apiService.getUserInfo(token!!, object : ApiService.OnUserInfoListener {
+                override fun onSuccess(userInfo: ApiService.UserInfoResponse.UserInfoData) {
+                    _userProfile.postValue(userInfo)
+                }
+                
+                override fun onFailure(error: String) {
+                    Log.e("MainViewModel", "获取用户信息失败: $error")
+                    // 如果token无效，尝试重新获取
+                    apiService.getAuthToken(object : ApiService.OnAuthListener {
+                        override fun onSuccess(newToken: String, expireAt: Long) {
+                            token = newToken
+                            this@MainViewModel.expireAt = expireAt
+                            apiService.getUserInfo(newToken, object : ApiService.OnUserInfoListener {
+                                override fun onSuccess(userInfo: ApiService.UserInfoResponse.UserInfoData) {
+                                    _userProfile.postValue(userInfo)
+                                }
+                                
+                                override fun onFailure(error: String) {
+                                    Log.e("MainViewModel", "重新获取token后获取用户信息失败: $error")
+                                }
+                            })
+                        }
+                        
+                        override fun onFailure(error: String) {
+                            Log.e("MainViewModel", "重新获取token失败: $error")
+                        }
+                    })
+                }
+            })
+        }
     }
 }
