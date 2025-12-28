@@ -54,7 +54,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // Services
-    private val apiService = ApiService(application)
+    val apiService = ApiService(application)
     private val iclassApiService = IclassApiService(application)
     // 临时跳过 TLS 证书校验（仅用于测试环境，正式环境务必改回 false）
     private val ALLOW_INSECURE_TLS = true
@@ -65,8 +65,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // Data
     private var currentUserId: String? = null
     private var currentSessionId: String? = null
-    private var token: String? = null
-    private var expireAt: Long? = null
+    var token: String? = null
+    var expireAt: Long? = null
     // 创建支持LocalDateTime的Gson实例
     private val gson = GsonBuilder()
         .registerTypeAdapter(LocalDateTime::class.java, LocalDateTimeSerializer())

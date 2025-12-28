@@ -330,4 +330,133 @@ class ApiService(private val context: Context) {
             }
         })
     }
+
+    // 身份验证相关接口和数据模型
+    interface OnVerifyCodeListener {
+        fun onSuccess(message: String)
+        fun onFailure(error: String)
+    }
+
+    interface OnUserVerifyListener {
+        fun onSuccess(message: String)
+        fun onFailure(error: String)
+    }
+
+    data class VerifyCodeResponse(
+        val code: Int,
+        val msg: String,
+        val data: Any?
+    )
+
+    data class UserVerifyResponse(
+        val code: Int,
+        val msg: String,
+        val data: Any?
+    )
+
+    data class VerifyCodeRequest(
+        val email: String,
+        val type: Int
+    )
+
+    data class UserVerifyRequest(
+        val email: String,
+        val verifyCode: String
+    )
+
+    // 发送验证码的方法
+    fun sendVerifyCode(token: String, studentId: String, listener: OnVerifyCodeListener) {
+        val verifyUrl = "https://101.42.43.228/api/verify"
+        val email = "$studentId@buaa.edu.cn"
+        
+        val verifyCodeRequest = VerifyCodeRequest(
+            email = email,
+            type = 4
+        )
+        
+        // 构建请求体
+        val jsonBody = gson.toJson(verifyCodeRequest)
+        val requestBody = RequestBody.create("application/json; charset=utf-8".toMediaTypeOrNull(), jsonBody)
+        
+        // 构建请求
+        val request = Request.Builder()
+            .url(verifyUrl)
+            .post(requestBody)
+            .addHeader("Content-Type", "application/json")
+            .addHeader("Authorization", token)
+            .build()
+        
+        // 发送请求
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                listener.onFailure("发送验证码失败: ${e.message}")
+                e.printStackTrace()
+            }
+            
+            override fun onResponse(call: Call, response: Response) {
+                try {
+                    val responseData = response.body?.string()
+                    Log.i("VerifyCode", responseData.toString())
+                    val verifyCodeResponse = gson.fromJson(responseData, VerifyCodeResponse::class.java)
+                    
+                    if (verifyCodeResponse.code == 1) {
+                        listener.onSuccess(verifyCodeResponse.msg)
+                    } else {
+                        listener.onFailure("发送验证码失败: ${verifyCodeResponse.msg}")
+                    }
+                } catch (e: Exception) {
+                    listener.onFailure("解析验证码响应失败: ${e.message}")
+                    e.printStackTrace()
+                }
+            }
+        })
+    }
+
+    // 验证身份的方法
+    fun verifyUser(token: String, studentId: String, verifyCode: String, listener: OnUserVerifyListener) {
+        val verifyUserUrl = "https://101.42.43.228/api/user/verify"
+        val email = "$studentId@buaa.edu.cn"
+        
+        val userVerifyRequest = UserVerifyRequest(
+            email = email,
+            verifyCode = verifyCode
+        )
+        
+        // 构建请求体
+        val jsonBody = gson.toJson(userVerifyRequest)
+        val requestBody = RequestBody.create("application/json; charset=utf-8".toMediaTypeOrNull(), jsonBody)
+        
+        // 构建请求
+        val request = Request.Builder()
+            .url(verifyUserUrl)
+            .post(requestBody)
+            .addHeader("Content-Type", "application/json")
+            .addHeader("Authorization", token)
+            .build()
+        
+        // 发送请求
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                listener.onFailure("身份验证失败: ${e.message}")
+                e.printStackTrace()
+            }
+            
+            override fun onResponse(call: Call, response: Response) {
+                try {
+                    val responseData = response.body?.string()
+                    Log.i("UserVerify", responseData.toString())
+                    val userVerifyResponse = gson.fromJson(responseData, UserVerifyResponse::class.java)
+                    
+                    if (userVerifyResponse.code == 1) {
+                        listener.onSuccess(userVerifyResponse.msg)
+                    } else {
+                        listener.onFailure("身份验证失败: ${userVerifyResponse.msg}")
+                    }
+                } catch (e: Exception) {
+                    listener.onFailure("解析身份验证响应失败: ${e.message}")
+                    e.printStackTrace()
+                }
+            }
+        })
+    }
 }

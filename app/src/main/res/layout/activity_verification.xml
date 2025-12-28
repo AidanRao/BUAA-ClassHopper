@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    tools:context=".VerificationActivity">
+
+    <!-- 标题栏 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingVertical="16dp">
+
+        <ImageView
+            android:id="@+id/back_button"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="?attr/homeAsUpIndicator"
+            android:contentDescription="返回"
+            android:padding="8dp" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="北航身份验证"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:gravity="center" />
+
+        <View
+            android:layout_width="40dp"
+            android:layout_height="40dp" />
+
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:paddingVertical="8dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <!-- 说明文字 -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="请输入您的北航学号，系统将发送验证码到您的北航邮箱"
+                android:textSize="16sp"
+                android:textColor="@android:color/black"
+                android:gravity="center"
+                android:padding="16dp" />
+
+            <!-- 学号输入框 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="16dp"
+                android:layout_marginBottom="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="北航学号"
+                    android:textSize="14sp"
+                    android:textColor="@android:color/black"
+                    android:layout_marginBottom="4dp" />
+
+                <EditText
+                    android:id="@+id/student_id_edit"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="请输入您的北航学号"
+                    android:inputType="number"
+                    android:textSize="16sp"
+                    android:padding="12dp"
+                    android:background="@drawable/edittext_background"
+                    android:layout_marginBottom="8dp" />
+
+            </LinearLayout>
+
+            <!-- 发送验证码按钮 -->
+            <Button
+                android:id="@+id/send_code_button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="发送验证码到邮箱"
+                android:textSize="16sp"
+                android:backgroundTint="@android:color/holo_blue_light"
+                android:textColor="@android:color/white"
+                android:paddingVertical="12dp"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginBottom="16dp"
+                android:radius="8dp" />
+
+            <!-- 验证码输入框 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="16dp"
+                android:layout_marginBottom="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="验证码"
+                    android:textSize="14sp"
+                    android:textColor="@android:color/black"
+                    android:layout_marginBottom="4dp" />
+
+                <EditText
+                    android:id="@+id/verify_code_edit"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="请输入收到的验证码"
+                    android:inputType="number"
+                    android:textSize="16sp"
+                    android:padding="12dp"
+                    android:background="@drawable/edittext_background"
+                    android:layout_marginBottom="8dp" />
+
+            </LinearLayout>
+
+            <!-- 验证按钮 -->
+            <Button
+                android:id="@+id/verify_button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="验证身份"
+                android:textSize="16sp"
+                android:backgroundTint="@android:color/holo_green_light"
+                android:textColor="@android:color/white"
+                android:paddingVertical="12dp"
+                android:layout_marginHorizontal="16dp"
+                android:radius="8dp" />
+
+        </LinearLayout>
+
+    </ScrollView>
+
+</LinearLayout>

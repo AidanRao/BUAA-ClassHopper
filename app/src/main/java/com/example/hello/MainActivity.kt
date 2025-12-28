@@ -137,7 +137,10 @@ class MainActivity : AppCompatActivity() {
                 }
                 R.id.menu_settings -> {
                     // 处理设置点击
-                    Toast.makeText(this, "设置", Toast.LENGTH_SHORT).show()
+                    // 获取最新用户信息
+                    viewModel.fetchUserProfile()
+                    val intent = android.content.Intent(this, SettingsActivity::class.java)
+                    startActivity(intent)
                     drawerLayout.closeDrawer(navView)
                     true
                 }
