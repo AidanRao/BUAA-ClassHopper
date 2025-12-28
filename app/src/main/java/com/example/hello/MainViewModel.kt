@@ -196,9 +196,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             override fun onFailure(error: String) {
-                _isLoading.postValue(false)
-                _error.postValue(error)
-                isRequestInProgress = false
+                // 登录失败，检查是否可以使用fallback
+                if (token != null) {
+                    val dateStr = date.replace("-", "")
+                    iclassApiService.getCourseSchedule("", "", dateStr, object : IclassApiService.OnCourseScheduleListener {
+                        override fun onSuccess(courses: List<Course>) {
+                            _isLoading.postValue(false)
+                            _courses.postValue(courses)
+                            isRequestInProgress = false
+                        }
+
+                        override fun onEmpty() {
+                            _isLoading.postValue(false)
+                            _isEmpty.postValue(true)
+                            isRequestInProgress = false
+                        }
+
+                        override fun onFailure(error: String) {
+                            _isLoading.postValue(false)
+                            _error.postValue(error)
+                            isRequestInProgress = false
+                        }
+                    }, token)
+                } else {
+                    _isLoading.postValue(false)
+                    _error.postValue(error)
+                    isRequestInProgress = false
+                }
             }
         })
     }

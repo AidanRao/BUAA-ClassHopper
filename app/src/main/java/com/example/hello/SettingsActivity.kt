@@ -150,11 +150,13 @@ class SettingsActivity : AppCompatActivity() {
 
     // 根据用户认证状态更新Fallback开关的可用性
     private fun updateFallbackSwitchAvailability(isVerified: Boolean) {
+        // 只有在用户未认证时才强制关闭开关并保存状态
         if (!isVerified && fallbackSwitch.isChecked) {
-            // 如果用户已取消认证且开关处于开启状态，关闭开关并保存状态
             fallbackSwitch.isChecked = false
             saveFallbackEnabled(false)
         }
+        // 当用户已认证时，保持开关当前状态（从SharedPreferences加载的状态）
+        // 这样可以避免fetchUserProfile()完成后覆盖已保存的设置
         
         // 更新开关的可点击状态
         fallbackSwitch.isClickable = true // 始终允许点击，在点击事件中检查认证状态
@@ -162,15 +164,37 @@ class SettingsActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        // 重新获取用户信息，确保显示最新状态
-        viewModel.fetchUserProfile()
         
-        // 加载保存的Fallback实现开关状态
+        // 先加载保存的Fallback实现开关状态，但要暂时移除监听器防止触发
         val isEnabled = isFallbackEnabled()
+        fallbackSwitch.setOnCheckedChangeListener(null) // 暂时移除监听器
         fallbackSwitch.isChecked = isEnabled
+        fallbackSwitch.setOnCheckedChangeListener { _, isChecked ->
+            // 检查用户是否已认证
+            val isVerified = viewModel.userProfile.value?.verified ?: false
+            if (isChecked && !isVerified) {
+                // 未认证用户尝试开启，显示提示并重置开关状态
+                AlertDialog.Builder(this)
+                    .setTitle("提示")
+                    .setMessage("您需要先完成北航身份认证才能开启该功能")
+                    .setPositiveButton("确定") { _, _ ->
+                        // 重置开关状态
+                        fallbackSwitch.isChecked = false
+                    }
+                    .show()
+            } else {
+                // 已认证用户或关闭操作，保存状态
+                saveFallbackEnabled(isChecked)
+            }
+        } // 重新添加监听器
         
-        // 根据当前认证状态更新开关可用性
-        val isVerified = viewModel.userProfile.value?.verified ?: false
-        updateFallbackSwitchAvailability(isVerified)
+        // 只在有用户信息时才更新开关可用性，否则等fetchUserProfile完成后由观察者更新
+        if (viewModel.userProfile.value != null) {
+            val isVerified = viewModel.userProfile.value?.verified ?: false
+            updateFallbackSwitchAvailability(isVerified)
+        }
+        
+        // 最后再重新获取用户信息，确保显示最新状态
+        viewModel.fetchUserProfile()
     }
 }
