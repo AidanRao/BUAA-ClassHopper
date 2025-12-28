@@ -95,7 +95,7 @@ class SettingsActivity : AppCompatActivity() {
         infoCourseButton.setOnClickListener {
             AlertDialog.Builder(this)
                 .setTitle("课程打卡配置说明")
-                .setMessage("课程打卡配置用于设置和管理您的课程打卡信息。该功能正在开发中，敬请期待。")
+                .setMessage("课程打卡配置用于设置和管理APP获取课表和打卡的实现方式。")
                 .setPositiveButton("确定", null)
                 .show()
         }
