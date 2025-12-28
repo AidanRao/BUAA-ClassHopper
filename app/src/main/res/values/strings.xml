@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">BUAA-ClassHopper</string>
+    <string name="iclass_fallback_config_desc">当本机不处于北航校园网下，将无法获取课表和打卡，此时将使用系统服务器完成相关操作</string>
+    <string name="iclass_fallback_config_name">获取课表和打卡的备选方案</string>
 </resources>

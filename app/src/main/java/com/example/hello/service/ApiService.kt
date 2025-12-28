@@ -1,22 +1,17 @@
 package com.example.hello.service
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
-import com.example.hello.model.Course
-import com.example.hello.model.CourseResponse
 import com.example.hello.utils.DeviceIdUtil
 import com.example.hello.utils.SignUtils
 import com.google.gson.Gson
-import com.google.gson.JsonObject
-import com.google.gson.annotations.SerializedName
 import okhttp3.*
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import java.io.IOException
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
-import java.text.*
-import java.util.*
+import java.text.SimpleDateFormat
 import javax.net.ssl.*
 
 class ApiService(private val context: Context) {
@@ -47,22 +42,6 @@ class ApiService(private val context: Context) {
     private var expireAt: Long? = null
     private val APP_KEY = "buaa-classhopper-android"
 
-    interface OnLoginListener {
-        fun onSuccess(userId: String, sessionId: String, realName: String, academyName: String)
-        fun onFailure(error: String)
-    }
-
-    interface OnCourseScheduleListener {
-        fun onSuccess(courses: List<Course>)
-        fun onEmpty()
-        fun onFailure(error: String)
-    }
-
-    interface OnSignListener {
-        fun onSuccess()
-        fun onFailure(error: String)
-    }
-    
     // 鉴权相关接口和数据模型
     interface OnAuthListener {
         fun onSuccess(token: String, expireAt: Long)
@@ -70,21 +49,21 @@ class ApiService(private val context: Context) {
     }
     
     data class AuthResponse(
-        @SerializedName("code") val code: Int,
-        @SerializedName("msg") val msg: String,
-        @SerializedName("data") val data: AuthData?
+        val code: Int,
+        val msg: String,
+        val data: AuthData?
     )
     
     data class AuthData(
-        @SerializedName("token") val token: String,
-        @SerializedName("expireAt") val expireAt: String
+        val token: String,
+        val expireAt: String
     )
     
     data class AuthRequest(
-        @SerializedName("appKey") val appKey: String,
-        @SerializedName("timestamp") val timestamp: Long,
-        @SerializedName("signature") val signature: String,
-        @SerializedName("appUUID") val appUUID: String
+        val appKey: String,
+        val timestamp: Long,
+        val signature: String,
+        val appUUID: String
     )
     
     // 检查token是否有效
@@ -122,6 +101,7 @@ class ApiService(private val context: Context) {
         
         // 构建请求
         val authUrl = "https://101.42.43.228/api/user/third-auth"
+//        val authUrl = "http://10.0.2.2:8088/user/third-auth"
         val request = Request.Builder()
             .url(authUrl)
             .post(requestBody)
@@ -135,6 +115,7 @@ class ApiService(private val context: Context) {
                 e.printStackTrace()
             }
             
+            @SuppressLint("SimpleDateFormat")
             override fun onResponse(call: Call, response: Response) {
                 try {
                     val responseData = response.body?.string()
@@ -165,141 +146,316 @@ class ApiService(private val context: Context) {
             }
         })
     }
-
-    fun login(id: String, listener: OnLoginListener) {
-        val loginUrl = "https://iclass.buaa.edu.cn:8346/app/user/login.action".toHttpUrlOrNull()?.newBuilder()
-            ?.addQueryParameter("password", "")
-            ?.addQueryParameter("phone", id)
-            ?.addQueryParameter("userLevel", "1")
-            ?.addQueryParameter("verificationType", "2")
-            ?.addQueryParameter("verificationUrl", "")
-            ?.build()
-            ?.toString() ?: return
-
-        val loginRequest = Request.Builder()
-            .url(loginUrl)
+    
+    // 用户信息相关接口和数据模型
+    interface OnUserInfoListener {
+        fun onSuccess(userInfo: UserInfoResponse.UserInfoData)
+        fun onFailure(error: String)
+    }
+    
+    data class UserInfoResponse(
+        val code: Int,
+        val msg: String,
+        val data: UserInfoData?
+    ) {
+        data class UserInfoData(
+            val id: String,
+            val username: String,
+            val avatar: String?,
+            val createTime: String,
+            val gender: String,
+            val studentId: String,
+            val verified: Boolean,
+            val joinedTeamCount: Int,
+            val createdTeamCount: Int,
+            val role: String,
+            val appKey: String?
+        )
+    }
+    
+    // 获取用户信息的方法
+    fun getUserInfo(token: String, listener: OnUserInfoListener) {
+        val userInfoUrl = "https://101.42.43.228/api/user/info"
+        val request = Request.Builder()
+            .url(userInfoUrl)
             .get()
+            .addHeader("Authorization", token)
             .build()
-
-        client.newCall(loginRequest).enqueue(object : Callback {
+        
+        client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                listener.onFailure("登录失败: ${e.message}")
+                listener.onFailure("获取用户信息失败: ${e.message}")
                 e.printStackTrace()
             }
-
+            
             override fun onResponse(call: Call, response: Response) {
                 try {
-                    val loginData = response.body?.string()
-                    val loginJson = gson.fromJson(loginData, JsonObject::class.java)
-                    val resultObject = loginJson.getAsJsonObject("result")
-                    val userId = resultObject.get("id").asString
-                    val sessionId = resultObject.get("sessionId").asString
-                    val realName = resultObject.get("realName").asString
-                    val academyName = resultObject.get("academyName").asString
-                    listener.onSuccess(userId, sessionId, realName, academyName)
+                    val responseData = response.body?.string()
+                    Log.i("UserInfo", responseData.toString())
+                    val userInfoResponse = gson.fromJson(responseData, UserInfoResponse::class.java)
+                    
+                    if (userInfoResponse.code == 1 && userInfoResponse.data != null) {
+                        listener.onSuccess(userInfoResponse.data)
+                    } else {
+                        listener.onFailure("获取用户信息失败: ${userInfoResponse.msg}")
+                    }
                 } catch (e: Exception) {
-                    listener.onFailure("登录失败: ${e.message}")
+                    listener.onFailure("解析用户信息响应失败: ${e.message}")
+                    e.printStackTrace()
+                }
+            }
+        })
+    }
+    
+    // 公告相关接口和数据模型
+    interface OnAnnouncementsListener {
+        fun onSuccess(announcements: List<AnnouncementData>)
+        fun onFailure(error: String)
+    }
+    
+    // 公告详情监听器接口
+    interface OnAnnouncementDetailListener {
+        fun onSuccess(announcementDetail: AnnouncementDetailData)
+        fun onFailure(error: String)
+    }
+    
+    data class AnnouncementResponse(
+        val code: Int,
+        val msg: String,
+        val data: List<AnnouncementData>
+    )
+    
+    // 公告详情响应数据模型
+    data class AnnouncementDetailResponse(
+        val code: Int,
+        val msg: String,
+        val data: AnnouncementDetailData?
+    )
+    
+    data class AnnouncementData(
+        val id: String,
+        val title: String,
+        val content: String?,
+        val posterUserId: String?,
+        val cover: String?,
+        val createTime: String,
+        val updateTime: String?,
+        val deleted: String?,
+        val targetUserType: String?,
+        val targetAppKeys: String?,
+        val posterUsername: String?, // 发布者名称
+        val posterAvatar: String?    // 发布者头像
+    )
+    
+    // 公告详情数据模型
+    data class AnnouncementDetailData(
+        val id: String,
+        val title: String,
+        val content: String?,
+        val posterUserId: String?,
+        val cover: String?,
+        val createTime: String,
+        val updateTime: String?,
+        val deleted: Boolean,
+        val targetUserType: String?,
+        val targetAppKeys: String?,
+        val posterUsername: String?,
+        val posterAvatar: String?
+    )
+    
+    // 获取公告列表的方法
+    fun getAnnouncements(token: String, listener: OnAnnouncementsListener) {
+        val announcementUrl = "https://101.42.43.228/api/message/announcement/list"
+        val request = Request.Builder()
+            .url(announcementUrl)
+            .get()
+            .addHeader("Authorization", token)
+            .build()
+        
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                listener.onFailure("获取公告列表失败: ${e.message}")
+                e.printStackTrace()
+            }
+            
+            override fun onResponse(call: Call, response: Response) {
+                try {
+                    val responseData = response.body?.string()
+                    Log.i("Announcement", responseData.toString())
+                    val announcementResponse = gson.fromJson(responseData, AnnouncementResponse::class.java)
+                    
+                    if (announcementResponse.code == 1) {
+                        listener.onSuccess(announcementResponse.data)
+                    } else {
+                        listener.onFailure("获取公告列表失败: ${announcementResponse.msg}")
+                    }
+                } catch (e: Exception) {
+                    listener.onFailure("解析公告响应失败: ${e.message}")
+                    e.printStackTrace()
+                }
+            }
+        })
+    }
+    
+    // 获取公告详情的方法
+    fun getAnnouncementDetail(token: String, announcementId: String, listener: OnAnnouncementDetailListener) {
+        val announcementDetailUrl = "https://101.42.43.228/api/message/announcement/$announcementId"
+        val request = Request.Builder()
+            .url(announcementDetailUrl)
+            .get()
+            .addHeader("Authorization", token)
+            .build()
+        
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                listener.onFailure("获取公告详情失败: ${e.message}")
+                e.printStackTrace()
+            }
+            
+            override fun onResponse(call: Call, response: Response) {
+                try {
+                    val responseData = response.body?.string()
+                    Log.i("AnnouncementDetail", responseData.toString())
+                    val announcementDetailResponse = gson.fromJson(responseData, AnnouncementDetailResponse::class.java)
+                    
+                    if (announcementDetailResponse.code == 1 && announcementDetailResponse.data != null) {
+                        listener.onSuccess(announcementDetailResponse.data)
+                    } else {
+                        listener.onFailure("获取公告详情失败: ${announcementDetailResponse.msg}")
+                    }
+                } catch (e: Exception) {
+                    listener.onFailure("解析公告详情响应失败: ${e.message}")
                     e.printStackTrace()
                 }
             }
         })
     }
 
-    fun getCourseSchedule(userId: String, sessionId: String, dateStr: String, listener: OnCourseScheduleListener) {
+    // 身份验证相关接口和数据模型
+    interface OnVerifyCodeListener {
+        fun onSuccess(message: String)
+        fun onFailure(error: String)
+    }
 
-        val scheduleUrl = "https://iclass.buaa.edu.cn:8346/app/course/get_stu_course_sched.action".toHttpUrlOrNull()?.newBuilder()
-            ?.addQueryParameter("dateStr", dateStr)
-            ?.addQueryParameter("id", userId)
-            ?.build()
-            ?.toString() ?: return
+    interface OnUserVerifyListener {
+        fun onSuccess(message: String)
+        fun onFailure(error: String)
+    }
 
-        val scheduleRequest = Request.Builder()
-            .url(scheduleUrl)
-            .addHeader("sessionId", sessionId)
-            .get()
+    data class VerifyCodeResponse(
+        val code: Int,
+        val msg: String,
+        val data: Any?
+    )
+
+    data class UserVerifyResponse(
+        val code: Int,
+        val msg: String,
+        val data: Any?
+    )
+
+    data class VerifyCodeRequest(
+        val email: String,
+        val type: Int
+    )
+
+    data class UserVerifyRequest(
+        val email: String,
+        val verifyCode: String
+    )
+
+    // 发送验证码的方法
+    fun sendVerifyCode(token: String, studentId: String, listener: OnVerifyCodeListener) {
+        val verifyUrl = "https://101.42.43.228/api/verify"
+        val email = "$studentId@buaa.edu.cn"
+        
+        val verifyCodeRequest = VerifyCodeRequest(
+            email = email,
+            type = 4
+        )
+        
+        // 构建请求体
+        val jsonBody = gson.toJson(verifyCodeRequest)
+        val requestBody = RequestBody.create("application/json; charset=utf-8".toMediaTypeOrNull(), jsonBody)
+        
+        // 构建请求
+        val request = Request.Builder()
+            .url(verifyUrl)
+            .post(requestBody)
+            .addHeader("Content-Type", "application/json")
+            .addHeader("Authorization", token)
             .build()
-
-        client.newCall(scheduleRequest).enqueue(object : Callback {
+        
+        // 发送请求
+        client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                listener.onFailure("获取课表失败: ${e.message}")
+                listener.onFailure("发送验证码失败: ${e.message}")
                 e.printStackTrace()
             }
-
+            
             override fun onResponse(call: Call, response: Response) {
-                val scheduleData = response.body?.string()
                 try {
-                    scheduleData?.let {
-                        val courseResponse = gson.fromJson(it, CourseResponse::class.java)
-                        // 检查STATUS是否为2，如果是则表示没有课程数据
-                        if (courseResponse.STATUS == "2" || courseResponse.result.isNullOrEmpty()) {
-                            listener.onEmpty()
-                        } else {
-                            val courses = courseResponse.result ?: emptyList()
-                            if (courses.isNotEmpty()) {
-                                listener.onSuccess(courses)
-                            } else {
-                                listener.onEmpty()
-                            }
-                        }
+                    val responseData = response.body?.string()
+                    Log.i("VerifyCode", responseData.toString())
+                    val verifyCodeResponse = gson.fromJson(responseData, VerifyCodeResponse::class.java)
+                    
+                    if (verifyCodeResponse.code == 1) {
+                        listener.onSuccess(verifyCodeResponse.msg)
+                    } else {
+                        listener.onFailure("发送验证码失败: ${verifyCodeResponse.msg}")
                     }
                 } catch (e: Exception) {
-                    listener.onFailure("解析数据失败: ${e.message}")
+                    listener.onFailure("解析验证码响应失败: ${e.message}")
                     e.printStackTrace()
                 }
             }
         })
     }
 
-    fun signClass(studentId: String, courseId: String, listener: OnSignListener) {
-        // 首先登录获取sessionId
-        login(studentId, object : OnLoginListener {
-            override fun onSuccess(userId: String, sessionId: String, realName: String, academyName: String) {
-                // 构建签到请求
-                val timestamp = System.currentTimeMillis()
-                val formBody = FormBody.Builder()
-                    .add("id", userId)
-                    .build()
-
-                val signUrl = "http://iclass.buaa.edu.cn:8081/app/course/stu_scan_sign.action".toHttpUrlOrNull()?.newBuilder()
-                    ?.addQueryParameter("courseSchedId", courseId)
-                    ?.addQueryParameter("timestamp", timestamp.toString())
-                    ?.build()
-                    ?.toString() ?: return
-
-                val signRequest = Request.Builder()
-                        .url(signUrl)
-                        .post(formBody)
-                        .addHeader("Content-Type", "application/x-www-form-urlencoded")
-                        .addHeader("Authorization", "Bearer ${token}")
-                        .build()
-
-                client.newCall(signRequest).enqueue(object : Callback {
-                    override fun onFailure(call: Call, e: IOException) {
-                        listener.onFailure("签到失败: ${e.message}")
-                        e.printStackTrace()
-                    }
-
-                    override fun onResponse(call: Call, response: Response) {
-                        val signData = response.body?.string()
-                        try {
-                            signData?.let {
-                                val signJson = gson.fromJson(it, JsonObject::class.java)
-                                if (signJson.has("result")) {
-                                    listener.onSuccess()
-                                } else {
-                                    listener.onFailure("签到失败: ${signJson.get("msg")?.asString ?: "未知错误"}")
-                                }
-                            }
-                        } catch (e: Exception) {
-                            listener.onFailure("解析响应失败: ${e.message}")
-                            e.printStackTrace()
-                        }
-                    }
-                })
+    // 验证身份的方法
+    fun verifyUser(token: String, studentId: String, verifyCode: String, listener: OnUserVerifyListener) {
+        val verifyUserUrl = "https://101.42.43.228/api/user/verify"
+        val email = "$studentId@buaa.edu.cn"
+        
+        val userVerifyRequest = UserVerifyRequest(
+            email = email,
+            verifyCode = verifyCode
+        )
+        
+        // 构建请求体
+        val jsonBody = gson.toJson(userVerifyRequest)
+        val requestBody = RequestBody.create("application/json; charset=utf-8".toMediaTypeOrNull(), jsonBody)
+        
+        // 构建请求
+        val request = Request.Builder()
+            .url(verifyUserUrl)
+            .post(requestBody)
+            .addHeader("Content-Type", "application/json")
+            .addHeader("Authorization", token)
+            .build()
+        
+        // 发送请求
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                listener.onFailure("身份验证失败: ${e.message}")
+                e.printStackTrace()
             }
-
-            override fun onFailure(error: String) {
-                listener.onFailure(error)
+            
+            override fun onResponse(call: Call, response: Response) {
+                try {
+                    val responseData = response.body?.string()
+                    Log.i("UserVerify", responseData.toString())
+                    val userVerifyResponse = gson.fromJson(responseData, UserVerifyResponse::class.java)
+                    
+                    if (userVerifyResponse.code == 1) {
+                        listener.onSuccess(userVerifyResponse.msg)
+                    } else {
+                        listener.onFailure("身份验证失败: ${userVerifyResponse.msg}")
+                    }
+                } catch (e: Exception) {
+                    listener.onFailure("解析身份验证响应失败: ${e.message}")
+                    e.printStackTrace()
+                }
             }
         })
     }
