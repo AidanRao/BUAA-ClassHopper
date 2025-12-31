@@ -152,7 +152,8 @@ class MainActivity : AppCompatActivity() {
                 }
                 R.id.menu_about -> {
                     // 处理关于点击
-                    Toast.makeText(this, "关于", Toast.LENGTH_SHORT).show()
+                    val intent = android.content.Intent(this, AboutActivity::class.java)
+                    startActivity(intent)
                     if (container != null) drawerLayout.closeDrawer(container)
                     true
                 }
