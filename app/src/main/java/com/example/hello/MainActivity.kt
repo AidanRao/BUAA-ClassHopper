@@ -114,25 +114,31 @@ class MainActivity : AppCompatActivity() {
      * 初始化侧边栏
      */
     private fun initDrawer() {
+        // 获取侧边栏容器
+        val drawerContainer = findViewById<View>(R.id.drawer_container)
+
         // 汉堡按钮点击事件
         hamburgerButton.setOnClickListener {
-            drawerLayout.openDrawer(navView)
+            drawerContainer?.let { container ->
+                drawerLayout.openDrawer(container)
+            }
         }
 
         // 侧边栏菜单项点击事件
         navView.setNavigationItemSelectedListener {
+            val container = findViewById<View>(R.id.drawer_container)
             when (it.itemId) {
                 R.id.menu_home -> {
                     // 处理首页点击
                     Toast.makeText(this, "首页", Toast.LENGTH_SHORT).show()
-                    drawerLayout.closeDrawer(navView)
+                    if (container != null) drawerLayout.closeDrawer(container)
                     true
                 }
                 R.id.menu_announcement -> {
                     // 处理公告点击，跳转到公告页面
                     val intent = android.content.Intent(this, AnnouncementActivity::class.java)
                     startActivity(intent)
-                    drawerLayout.closeDrawer(navView)
+                    if (container != null) drawerLayout.closeDrawer(container)
                     true
                 }
                 R.id.menu_settings -> {
@@ -141,13 +147,14 @@ class MainActivity : AppCompatActivity() {
                     viewModel.fetchUserProfile()
                     val intent = android.content.Intent(this, SettingsActivity::class.java)
                     startActivity(intent)
-                    drawerLayout.closeDrawer(navView)
+                    if (container != null) drawerLayout.closeDrawer(container)
                     true
                 }
                 R.id.menu_about -> {
                     // 处理关于点击
-                    Toast.makeText(this, "关于", Toast.LENGTH_SHORT).show()
-                    drawerLayout.closeDrawer(navView)
+                    val intent = android.content.Intent(this, AboutActivity::class.java)
+                    startActivity(intent)
+                    if (container != null) drawerLayout.closeDrawer(container)
                     true
                 }
                 else -> {
@@ -213,9 +220,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun showDatePickerDialog() {
         val calendar = Calendar.getInstance()
-        val year = calendar.get(Calendar.YEAR)
-        val month = calendar.get(Calendar.MONTH)
-        val day = calendar.get(Calendar.DAY_OF_MONTH)
 
         try {
             val dateStr = textViewDate.text.toString()
@@ -227,6 +231,10 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         } catch (_: Exception) { }
+        
+        val year = calendar.get(Calendar.YEAR)
+        val month = calendar.get(Calendar.MONTH)
+        val day = calendar.get(Calendar.DAY_OF_MONTH)
 
         DatePickerDialog(this, { _, selectedYear, selectedMonth, selectedDayOfMonth ->
             val formattedMonth = String.format(Locale.getDefault(), "%02d", selectedMonth + 1)
@@ -243,13 +251,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * 更新侧边栏头部用户信息
+     * 更新侧边栏用户信息（现在位于底部）
      */
     private fun updateDrawerHeader(userInfo: com.example.hello.service.ApiService.UserInfoResponse.UserInfoData) {
-        val headerView = navView.getHeaderView(0)
-        val avatarImage = headerView.findViewById<ImageView>(R.id.avatar_image)
-        val studentIdText = headerView.findViewById<TextView>(R.id.student_id_text)
-        val verifiedText = headerView.findViewById<TextView>(R.id.verified_text)
+        // 获取底部的用户信息 View
+        val footerView = findViewById<View>(R.id.drawer_footer) ?: return
+        
+        val avatarImage = footerView.findViewById<ImageView>(R.id.avatar_image)
+        val studentIdText = footerView.findViewById<TextView>(R.id.student_id_text)
+        val verifiedText = footerView.findViewById<TextView>(R.id.verified_text)
         
         // 设置学生ID
         studentIdText.text = userInfo.studentId
@@ -261,9 +271,8 @@ class MainActivity : AppCompatActivity() {
         // 加载头像
         if (!userInfo.avatar.isNullOrEmpty()) {
             // 使用Glide或其他图片加载库加载头像
-            // 这里需要确保项目中已添加Glide依赖
             try {
-                val request = Glide.with(this)
+                Glide.with(this)
                     .load(userInfo.avatar)
                     .circleCrop()
                     .placeholder(android.R.drawable.ic_menu_gallery)
@@ -271,7 +280,7 @@ class MainActivity : AppCompatActivity() {
                     .into(avatarImage)
             } catch (e: Exception) {
                 e.printStackTrace()
-                // 如果Glide未配置，使用默认头像
+                // 如果Glide出现异常，使用默认头像
                 avatarImage.setImageResource(android.R.drawable.ic_menu_gallery)
             }
         } else {

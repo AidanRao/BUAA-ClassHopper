@@ -1,5 +1,6 @@
 package com.example.hello
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.widget.Button
@@ -53,8 +54,8 @@ class VerificationActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            // 检查学号格式是否正确（这里简单检查是否为数字）
-            if (!studentId.matches(Regex("\\d+"))) {
+            // 检查学号格式是否正确（支持字母和数字）
+            if (!studentId.matches(Regex("[a-zA-Z0-9]+"))) {
                 Toast.makeText(this, "学号格式不正确", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
@@ -198,6 +199,7 @@ class VerificationActivity : AppCompatActivity() {
 
         // 创建新的倒计时
         countDownTimer = object : CountDownTimer(60000, 1000) {
+            @SuppressLint("SetTextI18n")
             override fun onTick(millisUntilFinished: Long) {
                 sendCodeButton.text = "重新发送(${millisUntilFinished / 1000}秒)"
             }

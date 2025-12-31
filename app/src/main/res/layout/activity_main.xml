@@ -222,14 +222,35 @@
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <!-- 侧边栏将在这里添加 -->
-    <com.google.android.material.navigation.NavigationView
-        android:id="@+id/nav_view"
+    <!-- 侧边栏容器 -->
+    <LinearLayout
+        android:id="@+id/drawer_container"
         android:layout_width="240dp"
         android:layout_height="match_parent"
         android:layout_gravity="start"
-        android:fitsSystemWindows="true"
-        app:menu="@menu/drawer_menu"
-        app:headerLayout="@layout/drawer_header" />
+        android:orientation="vertical"
+        android:background="@android:color/white"
+        android:fitsSystemWindows="true">
+
+        <!-- 菜单列表，占据剩余空间 -->
+        <com.google.android.material.navigation.NavigationView
+            android:id="@+id/nav_view"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            app:menu="@menu/drawer_menu" />
+
+        <!-- 分割线 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#EEEEEE" />
+
+        <!-- 用户信息（原 Header 现 Footer） -->
+        <include
+            android:id="@+id/drawer_footer"
+            layout="@layout/drawer_header" />
+
+    </LinearLayout>
 
 </androidx.drawerlayout.widget.DrawerLayout>

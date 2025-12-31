@@ -82,7 +82,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="请输入您的北航学号"
-                    android:inputType="number"
+                    android:inputType="textVisiblePassword"
                     android:textSize="16sp"
                     android:padding="12dp"
                     android:background="@drawable/edittext_background"

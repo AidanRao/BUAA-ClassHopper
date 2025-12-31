@@ -41,6 +41,11 @@
             android:name=".VerificationActivity"
             android:exported="false"
             android:theme="@style/Theme.Hello" />
+        <activity
+            android:name=".AboutActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Hello"
+            android:label="关于" />
     </application>
 
 </manifest>
