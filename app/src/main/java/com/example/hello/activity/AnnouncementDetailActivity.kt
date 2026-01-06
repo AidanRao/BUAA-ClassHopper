@@ -1,4 +1,4 @@
-package com.example.hello
+package com.example.hello.activity
 
 import android.annotation.SuppressLint
 import android.os.Bundle
@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import com.bumptech.glide.Glide
 import com.example.hello.service.ApiService
+import com.example.hello.R
 
 class AnnouncementDetailActivity : AppCompatActivity() {
 

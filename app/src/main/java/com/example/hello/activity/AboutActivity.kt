@@ -1,10 +1,11 @@
-package com.example.hello
+package com.example.hello.activity
 
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.appbar.MaterialToolbar
+import com.example.hello.R
 
 class AboutActivity : AppCompatActivity() {
 

@@ -1,4 +1,4 @@
-package com.example.hello
+package com.example.hello.activity
 
 import android.annotation.SuppressLint
 import android.os.Bundle
@@ -9,7 +9,9 @@ import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
+import com.example.hello.R
 import com.example.hello.service.ApiService
+import com.example.hello.viewmodel.MainViewModel
 
 class VerificationActivity : AppCompatActivity() {
     private lateinit var backButton: ImageView

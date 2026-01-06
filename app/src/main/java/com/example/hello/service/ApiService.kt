@@ -8,6 +8,7 @@ import com.example.hello.utils.SignUtils
 import com.google.gson.Gson
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
@@ -15,10 +16,15 @@ import java.text.SimpleDateFormat
 import javax.net.ssl.*
 
 class ApiService(private val context: Context) {
+    private val BASE_URL = "https://101.42.43.228/api/"
+//    private val BASE_URL = "http://10.0.2.2:8088/"
+
     // 创建信任所有证书的OkHttpClient
-    private val client = OkHttpClient.Builder()
+    val client = OkHttpClient.Builder()
         .sslSocketFactory(createSSLSocketFactory(), object : X509TrustManager {
+            @SuppressLint("TrustAllX509TrustManager")
             override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
+            @SuppressLint("TrustAllX509TrustManager")
             override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
             override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
         })
@@ -30,7 +36,9 @@ class ApiService(private val context: Context) {
     private fun createSSLSocketFactory(): SSLSocketFactory {
         val sslContext = SSLContext.getInstance("TLS")
         sslContext.init(null, arrayOf(object : X509TrustManager {
+            @SuppressLint("TrustAllX509TrustManager")
             override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
+            @SuppressLint("TrustAllX509TrustManager")
             override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
             override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
         }), SecureRandom())
@@ -97,11 +105,11 @@ class ApiService(private val context: Context) {
         
         // 构建请求体
         val jsonBody = gson.toJson(authRequest)
-        val requestBody = RequestBody.create("application/json; charset=utf-8".toMediaTypeOrNull(), jsonBody)
+        val requestBody =
+            jsonBody.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
         
         // 构建请求
-        val authUrl = "https://101.42.43.228/api/user/third-auth"
-//        val authUrl = "http://10.0.2.2:8088/user/third-auth"
+        val authUrl = BASE_URL + "user/third-auth"
         val request = Request.Builder()
             .url(authUrl)
             .post(requestBody)
@@ -175,7 +183,7 @@ class ApiService(private val context: Context) {
     
     // 获取用户信息的方法
     fun getUserInfo(token: String, listener: OnUserInfoListener) {
-        val userInfoUrl = "https://101.42.43.228/api/user/info"
+        val userInfoUrl = BASE_URL + "user/info"
         val request = Request.Builder()
             .url(userInfoUrl)
             .get()
@@ -258,14 +266,14 @@ class ApiService(private val context: Context) {
         val updateTime: String?,
         val deleted: Boolean,
         val targetUserType: String?,
-        val targetAppKeys: String?,
+//        val targetAppKeys: String?,
         val posterUsername: String?,
         val posterAvatar: String?
     )
     
     // 获取公告列表的方法
     fun getAnnouncements(token: String, listener: OnAnnouncementsListener) {
-        val announcementUrl = "https://101.42.43.228/api/message/announcement/list"
+        val announcementUrl = BASE_URL + "message/announcement/list"
         val request = Request.Builder()
             .url(announcementUrl)
             .get()
@@ -299,7 +307,7 @@ class ApiService(private val context: Context) {
     
     // 获取公告详情的方法
     fun getAnnouncementDetail(token: String, announcementId: String, listener: OnAnnouncementDetailListener) {
-        val announcementDetailUrl = "https://101.42.43.228/api/message/announcement/$announcementId"
+        val announcementDetailUrl = BASE_URL + "message/announcement/$announcementId"
         val request = Request.Builder()
             .url(announcementDetailUrl)
             .get()
@@ -366,7 +374,7 @@ class ApiService(private val context: Context) {
 
     // 发送验证码的方法
     fun sendVerifyCode(token: String, studentId: String, listener: OnVerifyCodeListener) {
-        val verifyUrl = "https://101.42.43.228/api/verify"
+        val verifyUrl = BASE_URL + "verify"
         val email = "$studentId@buaa.edu.cn"
         
         val verifyCodeRequest = VerifyCodeRequest(
@@ -414,7 +422,7 @@ class ApiService(private val context: Context) {
 
     // 验证身份的方法
     fun verifyUser(token: String, studentId: String, verifyCode: String, listener: OnUserVerifyListener) {
-        val verifyUserUrl = "https://101.42.43.228/api/user/verify"
+        val verifyUserUrl = BASE_URL + "user/verify"
         val email = "$studentId@buaa.edu.cn"
         
         val userVerifyRequest = UserVerifyRequest(

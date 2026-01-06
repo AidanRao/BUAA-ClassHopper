@@ -1,4 +1,4 @@
-package com.example.hello
+package com.example.hello.viewmodel
 
 import android.app.Application
 import android.util.Log
