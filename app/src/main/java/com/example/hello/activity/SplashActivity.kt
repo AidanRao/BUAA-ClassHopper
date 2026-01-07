@@ -5,16 +5,15 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import android.view.View
 import android.widget.ImageView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.bumptech.glide.Glide
 import com.example.hello.NavigationManager
 import com.example.hello.R
 import com.example.hello.service.ApiService
 import com.example.hello.utils.DeviceIdUtil
-import com.example.hello.utils.SignUtils
+
+import java.util.concurrent.atomic.AtomicBoolean
 
 class SplashActivity : AppCompatActivity() {
     private lateinit var splashImage: ImageView
@@ -22,8 +21,18 @@ class SplashActivity : AppCompatActivity() {
     private var splashData: SplashResponseData? = null
     private val TAG = "SplashActivity"
     private var splashHandler: Handler? = null
+    
+    // 防止重复跳转
+    private val isNavigated = AtomicBoolean(false)
+    // 获取广告数据的超时时间
+    private val FETCH_TIMEOUT = 2000L 
+    
+    private val BASE_URL = "https://101.42.43.228/api/"
 
-    private val BASE_URL = "http://10.0.2.2:8088/"
+    private val fetchTimeoutRunnable = Runnable {
+        Log.w(TAG, "获取开屏广告超时，直接跳转主页")
+        navigateToMain()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,6 +40,11 @@ class SplashActivity : AppCompatActivity() {
 
         splashImage = findViewById(R.id.splash_image)
         apiService = ApiService(this)
+        
+        splashHandler = Handler(Looper.getMainLooper())
+
+        // 设置获取数据的超时处理
+        splashHandler?.postDelayed(fetchTimeoutRunnable, FETCH_TIMEOUT)
 
         // 获取开屏广告数据
         fetchSplashData()
@@ -81,8 +95,13 @@ class SplashActivity : AppCompatActivity() {
                         splashData = splashResponse.data
                         Log.i("splash-api", "" + splashResponse.data)
                         runOnUiThread {
-                            // 显示开屏广告图片
-                            showSplashImage(splashData!!)
+                            // 成功获取数据，取消超时检测
+                            splashHandler?.removeCallbacks(fetchTimeoutRunnable)
+
+                            // 如果尚未跳转（即未超时），则显示开屏广告
+                            if (!isNavigated.get()) {
+                                showSplashImage(splashData!!)
+                            }
                         }
                     } else {
                         runOnUiThread {
@@ -115,7 +134,6 @@ class SplashActivity : AppCompatActivity() {
         }
 
         // 定时器结束后跳转到主页面
-        splashHandler = Handler(Looper.getMainLooper())
         splashHandler?.postDelayed({
             navigateToMain()
         }, duration)
@@ -151,9 +169,13 @@ class SplashActivity : AppCompatActivity() {
 
     // 跳转到主页面
     private fun navigateToMain() {
-        val intent = Intent(this, MainActivity::class.java)
-        startActivity(intent)
-        finish()
+        if (isNavigated.compareAndSet(false, true)) {
+            // 确保移除所有回调，防止内存泄漏或逻辑错误
+            splashHandler?.removeCallbacksAndMessages(null)
+            val intent = Intent(this, MainActivity::class.java)
+            startActivity(intent)
+            finish()
+        }
     }
 
     // 开屏广告响应数据模型
