@@ -13,6 +13,8 @@ import com.example.hello.R
 import com.example.hello.service.ApiService
 import com.example.hello.viewmodel.MainViewModel
 
+import android.content.Intent
+
 class VerificationActivity : AppCompatActivity() {
     private lateinit var backButton: ImageView
     private lateinit var studentIdEdit: EditText
@@ -45,7 +47,7 @@ class VerificationActivity : AppCompatActivity() {
     private fun initListeners() {
         // 返回按钮点击事件
         backButton.setOnClickListener {
-            finish()
+            handleBackNavigation()
         }
 
         // 发送验证码按钮点击事件
@@ -93,6 +95,20 @@ class VerificationActivity : AppCompatActivity() {
             studentIdEdit.setText(it.studentId)
             studentIdEdit.isEnabled = false
         }
+    }
+
+    private fun handleBackNavigation() {
+        if (isTaskRoot) {
+            // 如果是根任务（没有上一级页面），则跳转到主页
+            val intent = Intent(this, MainActivity::class.java)
+            startActivity(intent)
+        }
+        finish()
+    }
+    
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        handleBackNavigation()
     }
 
     private fun sendVerifyCode(studentId: String) {
