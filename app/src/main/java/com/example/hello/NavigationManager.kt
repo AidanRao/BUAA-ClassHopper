@@ -47,11 +47,28 @@ object NavigationManager {
     /**
      * 根据路径跳转页面
      * @param context 上下文
-     * @param path 路径，如 "/main?param1=value1&param2=value2" 或 "classhopper://announcement"
+     * @param path 路径，如 "/main?param1=value1&param2=value2" 或 "classhopper://announcement" 或 "https://example.com"
      * @return 是否跳转成功
      */
     fun navigate(context: Context, path: String): Boolean {
         Log.d(TAG, "Navigating to path: $path")
+
+        // 处理http/https URL
+        if (path.startsWith("http://") || path.startsWith("https://")) {
+            try {
+                val intent = Intent(Intent.ACTION_VIEW)
+                intent.data = android.net.Uri.parse(path)
+                // 如果上下文不是Activity，需要添加FLAG_ACTIVITY_NEW_TASK
+                if (context !is android.app.Activity) {
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(intent)
+                return true
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to navigate to web URL $path: ${e.message}", e)
+                return false
+            }
+        }
 
         // 处理自定义协议URL
         val processedPath = if (path.startsWith("classhopper://")) {
