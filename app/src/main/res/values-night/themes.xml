@@ -11,4 +11,7 @@
         <item name="colorSurfaceVariant">@color/colorSurfaceVariant</item>
         <item name="colorOutline">@color/colorOutline</item>
     </style>
+    
+    <!-- No ActionBar theme for splash screen -->
+    <style name="Theme.Hello.NoActionBar" parent="Base.Theme.Hello" />
 </resources>

@@ -1,4 +1,4 @@
-package com.example.hello
+package com.example.hello.activity
 
 import android.content.Intent
 import android.os.Bundle
@@ -9,6 +9,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import com.bumptech.glide.Glide
 import com.example.hello.service.ApiService
+import com.example.hello.R
 
 class AnnouncementActivity : AppCompatActivity() {
 
@@ -41,7 +42,7 @@ class AnnouncementActivity : AppCompatActivity() {
         supportActionBar?.title = "公告"
 
         toolbar.setNavigationOnClickListener {
-            finish()
+            onBackPressed()
         }
 
         announcementAdapter = AnnouncementAdapter(announcements)
@@ -118,6 +119,19 @@ class AnnouncementActivity : AppCompatActivity() {
         runOnUiThread {
             Toast.makeText(this, "加载公告失败: $error", Toast.LENGTH_SHORT).show()
             showEmptyState()
+        }
+    }
+
+    override fun onBackPressed() {
+        // 检查当前Activity是否是任务栈中的根Activity
+        if (isTaskRoot) {
+            // 如果是根Activity，跳转到MainActivity而不是退出
+            val intent = Intent(this, MainActivity::class.java)
+            startActivity(intent)
+            finish()
+        } else {
+            // 否则正常返回上一级
+            super.onBackPressed()
         }
     }
 

@@ -1,4 +1,4 @@
-package com.example.hello
+package com.example.hello.activity
 
 import android.content.Intent
 import android.os.Bundle
@@ -10,7 +10,9 @@ import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
+import com.example.hello.R
 import com.example.hello.service.ApiService
+import com.example.hello.viewmodel.MainViewModel
 
 class SettingsActivity : AppCompatActivity() {
     // 配置项常量定义（用于SharedPreferences存储）

@@ -13,4 +13,7 @@
     </style>
 
     <style name="Theme.Hello" parent="Base.Theme.Hello" />
+    
+    <!-- No ActionBar theme for splash screen -->
+    <style name="Theme.Hello.NoActionBar" parent="Base.Theme.Hello" />
 </resources>

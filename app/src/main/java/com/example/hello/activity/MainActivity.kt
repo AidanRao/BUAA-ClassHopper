@@ -1,4 +1,4 @@
-package com.example.hello
+package com.example.hello.activity
 
 import android.app.DatePickerDialog
 import android.os.Bundle
@@ -14,7 +14,10 @@ import androidx.drawerlayout.widget.DrawerLayout
 import com.bumptech.glide.Glide
 import com.example.hello.ui.CourseTableRenderer
 import com.example.hello.ui.WebSocketStatusIndicator
+import com.example.hello.viewmodel.MainViewModel
 import com.google.android.material.navigation.NavigationView
+import com.example.hello.R
+import com.example.hello.NavigationManager
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -125,7 +128,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         // 侧边栏菜单项点击事件
-        navView.setNavigationItemSelectedListener {
+        navView.setNavigationItemSelectedListener { 
             val container = findViewById<View>(R.id.drawer_container)
             when (it.itemId) {
                 R.id.menu_home -> {
@@ -136,8 +139,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 R.id.menu_announcement -> {
                     // 处理公告点击，跳转到公告页面
-                    val intent = android.content.Intent(this, AnnouncementActivity::class.java)
-                    startActivity(intent)
+                    NavigationManager.navigate(this, "/announcement")
                     if (container != null) drawerLayout.closeDrawer(container)
                     true
                 }
@@ -145,15 +147,13 @@ class MainActivity : AppCompatActivity() {
                     // 处理设置点击
                     // 获取最新用户信息
                     viewModel.fetchUserProfile()
-                    val intent = android.content.Intent(this, SettingsActivity::class.java)
-                    startActivity(intent)
+                    NavigationManager.navigate(this, "/settings")
                     if (container != null) drawerLayout.closeDrawer(container)
                     true
                 }
                 R.id.menu_about -> {
                     // 处理关于点击
-                    val intent = android.content.Intent(this, AboutActivity::class.java)
-                    startActivity(intent)
+                    NavigationManager.navigate(this, "/about")
                     if (container != null) drawerLayout.closeDrawer(container)
                     true
                 }
