@@ -16,8 +16,8 @@ import java.text.SimpleDateFormat
 import javax.net.ssl.*
 
 class ApiService(private val context: Context) {
-//    private val BASE_URL = "https://101.42.43.228/api/"
-    private val BASE_URL = "http://10.0.2.2:8088/"
+    private val BASE_URL = "https://101.42.43.228/api/"
+//    private val BASE_URL = "http://10.0.2.2:8088/"
 
     // 创建信任所有证书的OkHttpClient
     val client = OkHttpClient.Builder()
