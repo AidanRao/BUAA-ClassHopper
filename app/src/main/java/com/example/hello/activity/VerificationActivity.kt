@@ -112,29 +112,19 @@ class VerificationActivity : AppCompatActivity() {
     }
 
     private fun sendVerifyCode(studentId: String) {
-        // 检查是否有token
-        if (viewModel.token.isNullOrEmpty()) {
-            // 获取token
-            viewModel.apiService.getAuthToken(object : ApiService.OnAuthListener {
-                override fun onSuccess(token: String, expireAt: Long) {
-                    viewModel.token = token
-                    viewModel.expireAt = expireAt
-                    // 获取token成功后发送验证码，确保在UI线程执行
-                    runOnUiThread {
-                        sendVerifyCodeWithToken(token, studentId)
-                    }
+        viewModel.apiService.getValidToken(object : ApiService.OnAuthListener {
+            override fun onSuccess(token: String, expireAt: Long) {
+                runOnUiThread {
+                    sendVerifyCodeWithToken(token, studentId)
                 }
+            }
 
-                override fun onFailure(error: String) {
-                    runOnUiThread {
-                        Toast.makeText(this@VerificationActivity, error, Toast.LENGTH_SHORT).show()
-                    }
+            override fun onFailure(error: String) {
+                runOnUiThread {
+                    Toast.makeText(this@VerificationActivity, error, Toast.LENGTH_SHORT).show()
                 }
-            })
-        } else {
-            // 直接发送验证码
-            sendVerifyCodeWithToken(viewModel.token!!, studentId)
-        }
+            }
+        })
     }
 
     private fun sendVerifyCodeWithToken(token: String, studentId: String) {
@@ -162,29 +152,19 @@ class VerificationActivity : AppCompatActivity() {
     }
 
     private fun verifyUser(studentId: String, verifyCode: String) {
-        // 检查是否有token
-        if (viewModel.token.isNullOrEmpty()) {
-            // 获取token
-            viewModel.apiService.getAuthToken(object : ApiService.OnAuthListener {
-                override fun onSuccess(token: String, expireAt: Long) {
-                    viewModel.token = token
-                    viewModel.expireAt = expireAt
-                    // 获取token成功后验证身份，确保在UI线程执行
-                    runOnUiThread {
-                        verifyUserWithToken(token, studentId, verifyCode)
-                    }
+        viewModel.apiService.getValidToken(object : ApiService.OnAuthListener {
+            override fun onSuccess(token: String, expireAt: Long) {
+                runOnUiThread {
+                    verifyUserWithToken(token, studentId, verifyCode)
                 }
+            }
 
-                override fun onFailure(error: String) {
-                    runOnUiThread {
-                        Toast.makeText(this@VerificationActivity, error, Toast.LENGTH_SHORT).show()
-                    }
+            override fun onFailure(error: String) {
+                runOnUiThread {
+                    Toast.makeText(this@VerificationActivity, error, Toast.LENGTH_SHORT).show()
                 }
-            })
-        } else {
-            // 直接验证身份
-            verifyUserWithToken(viewModel.token!!, studentId, verifyCode)
-        }
+            }
+        })
     }
 
     private fun verifyUserWithToken(token: String, studentId: String, verifyCode: String) {

@@ -32,6 +32,7 @@ object NavigationManager {
         registerPath("/settings", SettingsActivity::class.java)
         registerPath("/verification", VerificationActivity::class.java)
         registerPath("/about", AboutActivity::class.java)
+        registerPath("/scan", ScanLoginActivity::class.java)
     }
 
     /**

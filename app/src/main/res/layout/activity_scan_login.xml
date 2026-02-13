@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/colorSurface"
+    tools:context=".activity.ScanLoginActivity">
+
+    <!-- 顶部标题 -->
+    <TextView
+        android:id="@+id/title_text_view"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="扫码登录确认"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:layout_marginTop="64dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- 内容视图 -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/content_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/title_text_view"
+        app:layout_constraintBottom_toTopOf="@+id/button_layout">
+
+        <!-- 状态文本 -->
+        <TextView
+            android:id="@+id/status_text_view"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="请确认是否登录此设备"
+            android:textSize="18sp"
+            android:textColor="@color/colorOnSurface"
+            android:layout_marginTop="32dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <!-- 扫码信息 -->
+        <TextView
+            android:id="@+id/scan_info_text_view"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="扫码登录"
+            android:textSize="16sp"
+            android:textColor="@color/colorSecondary"
+            android:layout_marginTop="16dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/status_text_view" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- 加载视图 -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/loading_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/title_text_view"
+        app:layout_constraintBottom_toTopOf="@+id/button_layout">
+
+        <!-- 加载指示器 -->
+        <ProgressBar
+            android:id="@+id/progress_bar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <!-- 加载文本 -->
+        <TextView
+            android:id="@+id/loading_text_view"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="正在处理..."
+            android:textSize="16sp"
+            android:textColor="@color/colorSecondary"
+            android:layout_marginTop="16dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/progress_bar" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- 按钮布局 -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/button_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="64dp"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <!-- 确认按钮 -->
+        <Button
+            android:id="@+id/confirm_button"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="确认登录"
+            android:textSize="16sp"
+            android:textColor="@color/colorOnPrimary"
+            android:background="@color/colorPrimary"
+            android:layout_marginBottom="16dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintBottom_toTopOf="@+id/cancel_button" />
+
+        <!-- 取消按钮 -->
+        <Button
+            android:id="@+id/cancel_button"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="取消"
+            android:textSize="16sp"
+            android:textColor="@color/colorOnSurface"
+            android:background="@color/colorSurfaceVariant"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

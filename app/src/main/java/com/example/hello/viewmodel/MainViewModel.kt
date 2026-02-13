@@ -102,7 +102,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun connectWebSocket() {
-        apiService.getAuthToken(object : ApiService.OnAuthListener {
+        apiService.getValidToken(object : ApiService.OnAuthListener {
             override fun onSuccess(token: String, expireAt: Long) {
                 Log.d("MainViewModel", "自动获取token成功")
                 viewModelScope.launch(Dispatchers.Main) {
@@ -196,8 +196,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             override fun onFailure(error: String) {
-                // 登录失败，检查是否可以使用fallback
-                if (token != null) {
+                val cachedToken = apiService.getCachedToken()
+                if (cachedToken != null) {
                     val dateStr = date.replace("-", "")
                     iclassApiService.getCourseSchedule("", "", dateStr, object : IclassApiService.OnCourseScheduleListener {
                         override fun onSuccess(courses: List<Course>) {
@@ -217,7 +217,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             _error.postValue(error)
                             isRequestInProgress = false
                         }
-                    }, token)
+                    }, cachedToken)
                 } else {
                     _isLoading.postValue(false)
                     _error.postValue(error)
@@ -228,17 +228,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun signClass(studentId: String, courseId: Int, date: String) {
-        iclassApiService.signClass(studentId, courseId, object : IclassApiService.OnSignListener {
-            override fun onSuccess() {
-                _toastMessage.postValue("签到成功")
-                // 刷新课程列表
-                getClassInfo(studentId, date)
+        apiService.getValidToken(object : ApiService.OnAuthListener {
+            override fun onSuccess(token: String, expireAt: Long) {
+                iclassApiService.signClass(studentId, courseId, object : IclassApiService.OnSignListener {
+                    override fun onSuccess() {
+                        _toastMessage.postValue("签到成功")
+                        getClassInfo(studentId, date)
+                    }
+
+                    override fun onFailure(error: String) {
+                        _error.postValue(error)
+                    }
+                }, token)
             }
 
             override fun onFailure(error: String) {
                 _error.postValue(error)
             }
-        }, apiService.token)
+        })
     }
 
     override fun onCleared() {
@@ -252,56 +259,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     
     // 获取用户信息
     fun fetchUserProfile() {
-        if (token.isNullOrEmpty()) {
-            apiService.getAuthToken(object : ApiService.OnAuthListener {
-                override fun onSuccess(token: String, expireAt: Long) {
-                    this@MainViewModel.token = token
-                    this@MainViewModel.expireAt = expireAt
-                    apiService.getUserInfo(token, object : ApiService.OnUserInfoListener {
-                        override fun onSuccess(userInfo: ApiService.UserInfoResponse.UserInfoData) {
-                            _userProfile.postValue(userInfo)
-                        }
-                        
-                        override fun onFailure(error: String) {
-                            Log.e("MainViewModel", "获取用户信息失败: $error")
-                        }
-                    })
-                }
-                
-                override fun onFailure(error: String) {
-                    Log.e("MainViewModel", "获取token失败: $error")
-                }
-            })
-        } else {
-            apiService.getUserInfo(token!!, object : ApiService.OnUserInfoListener {
-                override fun onSuccess(userInfo: ApiService.UserInfoResponse.UserInfoData) {
-                    _userProfile.postValue(userInfo)
-                }
-                
-                override fun onFailure(error: String) {
-                    Log.e("MainViewModel", "获取用户信息失败: $error")
-                    // 如果token无效，尝试重新获取
-                    apiService.getAuthToken(object : ApiService.OnAuthListener {
-                        override fun onSuccess(newToken: String, expireAt: Long) {
-                            token = newToken
-                            this@MainViewModel.expireAt = expireAt
-                            apiService.getUserInfo(newToken, object : ApiService.OnUserInfoListener {
-                                override fun onSuccess(userInfo: ApiService.UserInfoResponse.UserInfoData) {
-                                    _userProfile.postValue(userInfo)
-                                }
-                                
-                                override fun onFailure(error: String) {
-                                    Log.e("MainViewModel", "重新获取token后获取用户信息失败: $error")
-                                }
-                            })
-                        }
-                        
-                        override fun onFailure(error: String) {
-                            Log.e("MainViewModel", "重新获取token失败: $error")
-                        }
-                    })
-                }
-            })
-        }
+        apiService.getValidToken(object : ApiService.OnAuthListener {
+            override fun onSuccess(token: String, expireAt: Long) {
+                this@MainViewModel.token = token
+                this@MainViewModel.expireAt = expireAt
+                apiService.getUserInfo(token, object : ApiService.OnUserInfoListener {
+                    override fun onSuccess(userInfo: ApiService.UserInfoResponse.UserInfoData) {
+                        _userProfile.postValue(userInfo)
+                    }
+
+                    override fun onFailure(error: String) {
+                        Log.e("MainViewModel", "获取用户信息失败: $error")
+                    }
+                })
+            }
+
+            override fun onFailure(error: String) {
+                Log.e("MainViewModel", "获取token失败: $error")
+            }
+        })
     }
 }
