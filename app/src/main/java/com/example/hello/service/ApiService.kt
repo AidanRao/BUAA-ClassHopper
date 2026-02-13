@@ -31,6 +31,7 @@ class ApiService(private val context: Context) {
         .hostnameVerifier { _, _ -> true }
         .build()
     private val gson = Gson()
+    private val authPrefs = context.getSharedPreferences("AuthCache", Context.MODE_PRIVATE)
     
     // 创建信任所有证书的SSL Socket Factory
     private fun createSSLSocketFactory(): SSLSocketFactory {
@@ -45,7 +46,6 @@ class ApiService(private val context: Context) {
         return sslContext.socketFactory
     }
     
-    // 鉴权相关变量
     var token: String? = null
     private var expireAt: Long? = null
     private val APP_KEY = "buaa-classhopper-android"
@@ -74,12 +74,45 @@ class ApiService(private val context: Context) {
         val appUUID: String
     )
     
-    // 检查token是否有效
-    private fun isTokenValid(): Boolean {
+    init {
+        val cached = readCachedToken()
+        token = cached.first
+        expireAt = cached.second
+    }
+
+    private fun readCachedToken(): Pair<String?, Long?> {
+        val cachedToken = authPrefs.getString("token", null)
+        val cachedExpireAt = if (authPrefs.contains("expireAt")) authPrefs.getLong("expireAt", 0L) else null
+        return Pair(cachedToken, cachedExpireAt)
+    }
+
+    private fun saveCachedToken(token: String, expireAt: Long) {
+        authPrefs.edit().putString("token", token).putLong("expireAt", expireAt).apply()
+    }
+
+    private fun isTokenValid(token: String?, expireAt: Long?): Boolean {
         if (token.isNullOrEmpty() || expireAt == null) {
             return false
         }
-        return System.currentTimeMillis() < expireAt!!
+        return System.currentTimeMillis() < expireAt
+    }
+
+    fun getCachedToken(): String? {
+        val cached = readCachedToken()
+        token = cached.first
+        expireAt = cached.second
+        return if (isTokenValid(token, expireAt)) token else null
+    }
+
+    fun getValidToken(listener: OnAuthListener) {
+        val cached = readCachedToken()
+        token = cached.first
+        expireAt = cached.second
+        if (isTokenValid(token, expireAt)) {
+            listener.onSuccess(token!!, expireAt!!)
+            return
+        }
+        getAuthToken(listener)
     }
     
     // 获取鉴权token的方法
@@ -130,19 +163,17 @@ class ApiService(private val context: Context) {
                     val authResponse = gson.fromJson(responseData, AuthResponse::class.java)
                     
                     if (authResponse.code == 1 && authResponse.data != null) {
-                        // 保存token和过期时间
                         token = authResponse.data.token
-                        // 解析ISO 8601格式的时间字符串
                         try {
                             val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS")
                             val date = sdf.parse(authResponse.data.expireAt.substringBeforeLast('Z'))
                             expireAt = date?.time ?: 0
                         } catch (e: Exception) {
-                            // 如果解析失败，使用当前时间+2小时作为过期时间
                             expireAt = System.currentTimeMillis() + 2 * 60 * 60 * 1000
                             e.printStackTrace()
                         }
-                        listener.onSuccess(authResponse.data.token, expireAt!!)
+                        saveCachedToken(token!!, expireAt!!)
+                        listener.onSuccess(token!!, expireAt!!)
                     } else {
                         listener.onFailure("获取鉴权token失败: ${authResponse.msg}")
                     }
@@ -461,6 +492,42 @@ class ApiService(private val context: Context) {
                     }
                 } catch (e: Exception) {
                     listener.onFailure("解析身份验证响应失败: ${e.message}")
+                    e.printStackTrace()
+                }
+            }
+        })
+    }
+
+    // 扫码登录确认相关接口和监听器
+    interface OnQRCodeLoginListener {
+        fun onSuccess()
+        fun onFailure(error: String)
+    }
+
+    // 扫码登录确认相关接口
+    fun confirmQRCodeLogin(token: String, scanId: String, listener: OnQRCodeLoginListener) {
+        val url = BASE_URL + "user/auth/qrcode/confirm?scanId=$scanId"
+        val request = Request.Builder()
+            .url(url)
+            .post("".toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull()))
+            .addHeader("Authorization", token)
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                listener.onFailure("网络错误: ${e.message}")
+                e.printStackTrace()
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                try {
+                    if (response.isSuccessful) {
+                        listener.onSuccess()
+                    } else {
+                        listener.onFailure("登录确认失败: ${response.code}")
+                    }
+                } catch (e: Exception) {
+                    listener.onFailure("解析响应失败: ${e.message}")
                     e.printStackTrace()
                 }
             }

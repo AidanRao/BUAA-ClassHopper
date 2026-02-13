@@ -52,6 +52,19 @@
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
+        <ImageButton
+            android:id="@+id/scanButton"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_marginTop="12dp"
+            android:layout_marginEnd="12dp"
+            android:background="@null"
+            android:contentDescription="扫码"
+            android:src="@android:drawable/ic_menu_camera"
+            app:tint="@color/colorOnSurface"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/webSocketStatusIcon" />
+
         <TextView
             android:id="@+id/userInfoTextView"
             android:layout_width="wrap_content"

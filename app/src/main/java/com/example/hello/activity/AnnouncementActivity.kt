@@ -41,9 +41,7 @@ class AnnouncementActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.title = "公告"
 
-        toolbar.setNavigationOnClickListener {
-            onBackPressed()
-        }
+        toolbar.setNavigationOnClickListener { finish() }
 
         announcementAdapter = AnnouncementAdapter(announcements)
         announcementListView.adapter = announcementAdapter
@@ -65,7 +63,7 @@ class AnnouncementActivity : AppCompatActivity() {
         showProgress()
         
         // 获取token并加载公告
-        apiService.getAuthToken(object : ApiService.OnAuthListener {
+        apiService.getValidToken(object : ApiService.OnAuthListener {
             override fun onSuccess(token: String, expireAt: Long) {
                 apiService.getAnnouncements(token, object : ApiService.OnAnnouncementsListener {
                     override fun onSuccess(announcementList: List<ApiService.AnnouncementData>) {
@@ -119,19 +117,6 @@ class AnnouncementActivity : AppCompatActivity() {
         runOnUiThread {
             Toast.makeText(this, "加载公告失败: $error", Toast.LENGTH_SHORT).show()
             showEmptyState()
-        }
-    }
-
-    override fun onBackPressed() {
-        // 检查当前Activity是否是任务栈中的根Activity
-        if (isTaskRoot) {
-            // 如果是根Activity，跳转到MainActivity而不是退出
-            val intent = Intent(this, MainActivity::class.java)
-            startActivity(intent)
-            finish()
-        } else {
-            // 否则正常返回上一级
-            super.onBackPressed()
         }
     }
 

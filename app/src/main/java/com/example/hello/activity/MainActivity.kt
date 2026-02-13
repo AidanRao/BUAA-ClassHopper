@@ -4,6 +4,7 @@ import android.app.DatePickerDialog
 import android.os.Bundle
 import android.view.View
 import android.widget.*
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -18,6 +19,8 @@ import com.example.hello.viewmodel.MainViewModel
 import com.google.android.material.navigation.NavigationView
 import com.example.hello.R
 import com.example.hello.NavigationManager
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -32,6 +35,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var webSocketStatusIcon: ImageView
     private lateinit var webSocketStatusIndicator: WebSocketStatusIndicator
     private lateinit var courseTableRenderer: CourseTableRenderer
+    private lateinit var scanButton: ImageButton
+    private lateinit var scanLauncher: ActivityResultLauncher<ScanOptions>
     
     // 侧边栏相关变量
     private lateinit var drawerLayout: DrawerLayout
@@ -47,6 +52,14 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
+        scanLauncher = registerForActivityResult(ScanContract()) { result ->
+            val contents = result.contents
+            if (contents.isNullOrEmpty()) {
+                Toast.makeText(this, "未识别二维码", Toast.LENGTH_SHORT).show()
+            } else {
+                handleScanResult(contents)
+            }
+        }
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.content_layout)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
@@ -83,6 +96,7 @@ class MainActivity : AppCompatActivity() {
         hamburgerButton = findViewById(R.id.hamburger_button)
         drawerLayout = findViewById(R.id.drawer_layout)
         navView = findViewById(R.id.nav_view)
+        scanButton = findViewById(R.id.scanButton)
 
         webSocketStatusIndicator = WebSocketStatusIndicator(this, webSocketStatusIcon)
         
@@ -111,6 +125,8 @@ class MainActivity : AppCompatActivity() {
                 putString(KEY_STUDENT_ID, id)
             }
         }
+
+        scanButton.setOnClickListener { startScan() }
     }
 
     /**
@@ -248,6 +264,23 @@ class MainActivity : AppCompatActivity() {
                 viewModel.getClassInfo(id, formattedDate)
             }
         }, year, month, day).show()
+    }
+
+    private fun startScan() {
+        val options = ScanOptions()
+            .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+            .setPrompt("请对准二维码")
+            .setBeepEnabled(true)
+            .setOrientationLocked(true)
+            .setCaptureActivity(ScanCaptureActivity::class.java)
+        scanLauncher.launch(options)
+    }
+
+    private fun handleScanResult(contents: String) {
+        val success = NavigationManager.navigate(this, contents)
+        if (!success) {
+            Toast.makeText(this, "无法处理二维码内容", Toast.LENGTH_SHORT).show()
+        }
     }
 
     /**

@@ -8,12 +8,12 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.lifecycle.ViewModelProvider
+import com.example.hello.NavigationManager
 import com.example.hello.R
 import com.example.hello.service.ApiService
 import com.example.hello.viewmodel.MainViewModel
-
-import android.content.Intent
 
 class VerificationActivity : AppCompatActivity() {
     private lateinit var backButton: ImageView
@@ -34,6 +34,12 @@ class VerificationActivity : AppCompatActivity() {
         initViews()
         initListeners()
         initObservers()
+
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                handleBackNavigation()
+            }
+        })
     }
 
     private fun initViews() {
@@ -45,9 +51,9 @@ class VerificationActivity : AppCompatActivity() {
     }
 
     private fun initListeners() {
-        // 返回按钮点击事件
         backButton.setOnClickListener {
             handleBackNavigation()
+            finish()
         }
 
         // 发送验证码按钮点击事件
@@ -99,42 +105,27 @@ class VerificationActivity : AppCompatActivity() {
 
     private fun handleBackNavigation() {
         if (isTaskRoot) {
-            // 如果是根任务（没有上一级页面），则跳转到主页
-            val intent = Intent(this, MainActivity::class.java)
-            startActivity(intent)
+            NavigationManager.navigate(this, "/main")
+            return
         }
         finish()
     }
-    
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        handleBackNavigation()
-    }
+
 
     private fun sendVerifyCode(studentId: String) {
-        // 检查是否有token
-        if (viewModel.token.isNullOrEmpty()) {
-            // 获取token
-            viewModel.apiService.getAuthToken(object : ApiService.OnAuthListener {
-                override fun onSuccess(token: String, expireAt: Long) {
-                    viewModel.token = token
-                    viewModel.expireAt = expireAt
-                    // 获取token成功后发送验证码，确保在UI线程执行
-                    runOnUiThread {
-                        sendVerifyCodeWithToken(token, studentId)
-                    }
+        viewModel.apiService.getValidToken(object : ApiService.OnAuthListener {
+            override fun onSuccess(token: String, expireAt: Long) {
+                runOnUiThread {
+                    sendVerifyCodeWithToken(token, studentId)
                 }
+            }
 
-                override fun onFailure(error: String) {
-                    runOnUiThread {
-                        Toast.makeText(this@VerificationActivity, error, Toast.LENGTH_SHORT).show()
-                    }
+            override fun onFailure(error: String) {
+                runOnUiThread {
+                    Toast.makeText(this@VerificationActivity, error, Toast.LENGTH_SHORT).show()
                 }
-            })
-        } else {
-            // 直接发送验证码
-            sendVerifyCodeWithToken(viewModel.token!!, studentId)
-        }
+            }
+        })
     }
 
     private fun sendVerifyCodeWithToken(token: String, studentId: String) {
@@ -162,29 +153,19 @@ class VerificationActivity : AppCompatActivity() {
     }
 
     private fun verifyUser(studentId: String, verifyCode: String) {
-        // 检查是否有token
-        if (viewModel.token.isNullOrEmpty()) {
-            // 获取token
-            viewModel.apiService.getAuthToken(object : ApiService.OnAuthListener {
-                override fun onSuccess(token: String, expireAt: Long) {
-                    viewModel.token = token
-                    viewModel.expireAt = expireAt
-                    // 获取token成功后验证身份，确保在UI线程执行
-                    runOnUiThread {
-                        verifyUserWithToken(token, studentId, verifyCode)
-                    }
+        viewModel.apiService.getValidToken(object : ApiService.OnAuthListener {
+            override fun onSuccess(token: String, expireAt: Long) {
+                runOnUiThread {
+                    verifyUserWithToken(token, studentId, verifyCode)
                 }
+            }
 
-                override fun onFailure(error: String) {
-                    runOnUiThread {
-                        Toast.makeText(this@VerificationActivity, error, Toast.LENGTH_SHORT).show()
-                    }
+            override fun onFailure(error: String) {
+                runOnUiThread {
+                    Toast.makeText(this@VerificationActivity, error, Toast.LENGTH_SHORT).show()
                 }
-            })
-        } else {
-            // 直接验证身份
-            verifyUserWithToken(viewModel.token!!, studentId, verifyCode)
-        }
+            }
+        })
     }
 
     private fun verifyUserWithToken(token: String, studentId: String, verifyCode: String) {

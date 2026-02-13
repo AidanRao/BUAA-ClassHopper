@@ -1,8 +1,10 @@
 package com.example.hello.activity
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
+import android.widget.CompoundButton
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.Switch
@@ -13,6 +15,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.example.hello.R
 import com.example.hello.service.ApiService
 import com.example.hello.viewmodel.MainViewModel
+import androidx.core.content.edit
 
 class SettingsActivity : AppCompatActivity() {
     // 配置项常量定义（用于SharedPreferences存储）
@@ -32,6 +35,20 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var fallbackDescription: TextView
     private lateinit var viewModel: MainViewModel
     private lateinit var sharedPreferences: android.content.SharedPreferences
+    private val fallbackSwitchListener = CompoundButton.OnCheckedChangeListener { _, isChecked ->
+        val isVerified = viewModel.userProfile.value?.verified ?: false
+        if (isChecked && !isVerified) {
+            AlertDialog.Builder(this)
+                .setTitle("提示")
+                .setMessage("您需要先完成北航身份认证才能开启该功能")
+                .setPositiveButton("确定") { _, _ ->
+                    fallbackSwitch.isChecked = false
+                }
+                .show()
+        } else {
+            saveFallbackEnabled(isChecked)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,7 +67,7 @@ class SettingsActivity : AppCompatActivity() {
 
     // 保存Fallback实现开关状态到SharedPreferences
     private fun saveFallbackEnabled(enabled: Boolean) {
-        sharedPreferences.edit().putBoolean(KEY_FALLBACK_ENABLED, enabled).apply()
+        sharedPreferences.edit { putBoolean(KEY_FALLBACK_ENABLED, enabled) }
     }
 
     // 从SharedPreferences读取Fallback实现开关状态
@@ -103,24 +120,7 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         // Fallback实现开关点击事件
-        fallbackSwitch.setOnCheckedChangeListener { _, isChecked ->
-            // 检查用户是否已认证
-            val isVerified = viewModel.userProfile.value?.verified ?: false
-            if (isChecked && !isVerified) {
-                // 未认证用户尝试开启，显示提示并重置开关状态
-                AlertDialog.Builder(this)
-                    .setTitle("提示")
-                    .setMessage("您需要先完成北航身份认证才能开启该功能")
-                    .setPositiveButton("确定") { _, _ ->
-                        // 重置开关状态
-                        fallbackSwitch.isChecked = false
-                    }
-                    .show()
-            } else {
-                // 已认证用户或关闭操作，保存状态
-                saveFallbackEnabled(isChecked)
-            }
-        }
+        fallbackSwitch.setOnCheckedChangeListener(fallbackSwitchListener)
     }
 
     private fun initObservers() {
@@ -169,26 +169,9 @@ class SettingsActivity : AppCompatActivity() {
         
         // 先加载保存的Fallback实现开关状态，但要暂时移除监听器防止触发
         val isEnabled = isFallbackEnabled()
-        fallbackSwitch.setOnCheckedChangeListener(null) // 暂时移除监听器
+        fallbackSwitch.setOnCheckedChangeListener(null)
         fallbackSwitch.isChecked = isEnabled
-        fallbackSwitch.setOnCheckedChangeListener { _, isChecked ->
-            // 检查用户是否已认证
-            val isVerified = viewModel.userProfile.value?.verified ?: false
-            if (isChecked && !isVerified) {
-                // 未认证用户尝试开启，显示提示并重置开关状态
-                AlertDialog.Builder(this)
-                    .setTitle("提示")
-                    .setMessage("您需要先完成北航身份认证才能开启该功能")
-                    .setPositiveButton("确定") { _, _ ->
-                        // 重置开关状态
-                        fallbackSwitch.isChecked = false
-                    }
-                    .show()
-            } else {
-                // 已认证用户或关闭操作，保存状态
-                saveFallbackEnabled(isChecked)
-            }
-        } // 重新添加监听器
+        fallbackSwitch.setOnCheckedChangeListener(fallbackSwitchListener)
         
         // 只在有用户信息时才更新开关可用性，否则等fetchUserProfile完成后由观察者更新
         if (viewModel.userProfile.value != null) {

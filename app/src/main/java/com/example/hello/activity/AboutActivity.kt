@@ -1,5 +1,6 @@
 package com.example.hello.activity
 
+import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.TextView
@@ -9,6 +10,7 @@ import com.example.hello.R
 
 class AboutActivity : AppCompatActivity() {
 
+    @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_about)
@@ -26,7 +28,7 @@ class AboutActivity : AppCompatActivity() {
         try {
             val packageInfo = packageManager.getPackageInfo(packageName, 0)
             tvVersion.text = "Version ${packageInfo.versionName}"
-        } catch (e: PackageManager.NameNotFoundException) {
+        } catch (_: PackageManager.NameNotFoundException) {
             tvVersion.text = "Version Unknown"
         }
     }

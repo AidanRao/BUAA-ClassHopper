@@ -65,7 +65,7 @@ class AnnouncementDetailActivity : AppCompatActivity() {
         showProgress()
         
         // 获取token并加载公告详情
-        apiService.getAuthToken(object : ApiService.OnAuthListener {
+        apiService.getValidToken(object : ApiService.OnAuthListener {
             override fun onSuccess(token: String, expireAt: Long) {
                 apiService.getAnnouncementDetail(token, announcementId, object : ApiService.OnAnnouncementDetailListener {
                     override fun onSuccess(announcementDetail: ApiService.AnnouncementDetailData) {
