@@ -106,6 +106,7 @@ class VerificationActivity : AppCompatActivity() {
     private fun handleBackNavigation() {
         if (isTaskRoot) {
             NavigationManager.navigate(this, "/main")
+            return
         }
         finish()
     }
