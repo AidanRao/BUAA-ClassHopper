@@ -8,7 +8,9 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.lifecycle.ViewModelProvider
+import com.example.hello.NavigationManager
 import com.example.hello.R
 import com.example.hello.service.ApiService
 import com.example.hello.viewmodel.MainViewModel
@@ -32,6 +34,12 @@ class VerificationActivity : AppCompatActivity() {
         initViews()
         initListeners()
         initObservers()
+
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                handleBackNavigation()
+            }
+        })
     }
 
     private fun initViews() {
@@ -43,8 +51,8 @@ class VerificationActivity : AppCompatActivity() {
     }
 
     private fun initListeners() {
-        // 返回按钮点击事件
         backButton.setOnClickListener {
+            handleBackNavigation()
             finish()
         }
 
@@ -94,6 +102,14 @@ class VerificationActivity : AppCompatActivity() {
             studentIdEdit.isEnabled = false
         }
     }
+
+    private fun handleBackNavigation() {
+        if (isTaskRoot) {
+            NavigationManager.navigate(this, "/main")
+        }
+        finish()
+    }
+
 
     private fun sendVerifyCode(studentId: String) {
         viewModel.apiService.getValidToken(object : ApiService.OnAuthListener {

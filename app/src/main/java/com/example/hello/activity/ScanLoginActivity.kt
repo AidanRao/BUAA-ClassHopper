@@ -1,8 +1,6 @@
 package com.example.hello.activity
 
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
@@ -63,9 +61,7 @@ class ScanLoginActivity : AppCompatActivity() {
                         runOnUiThread {
                             statusTextView.text = "登录确认成功"
                             Toast.makeText(this@ScanLoginActivity, "登录确认成功", Toast.LENGTH_SHORT).show()
-                            Handler(Looper.getMainLooper()).postDelayed({
-                                finish()
-                            }, 1000)
+                            statusTextView.postDelayed({ finish() }, 1000)
                         }
                     }
 
