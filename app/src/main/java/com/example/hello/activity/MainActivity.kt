@@ -277,15 +277,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleScanResult(contents: String) {
-        val appBase = "https://classhopper.com/app/"
-        val targetPath = if (contents.startsWith(appBase)) {
-            val raw = contents.removePrefix(appBase)
-            val normalized = if (raw.startsWith("/")) raw else "/$raw"
-            if (normalized == "/") "/main" else normalized
-        } else {
-            contents
-        }
-        val success = NavigationManager.navigate(this, targetPath)
+        val success = NavigationManager.navigate(this, contents)
         if (!success) {
             Toast.makeText(this, "无法处理二维码内容", Toast.LENGTH_SHORT).show()
         }

@@ -7,6 +7,7 @@ import android.content.Intent
 import android.util.Log
 import com.example.hello.activity.*
 import java.util.concurrent.ConcurrentHashMap
+import androidx.core.net.toUri
 
 @SuppressLint("StaticFieldLeak")
 object NavigationManager {
@@ -54,11 +55,20 @@ object NavigationManager {
     fun navigate(context: Context, path: String): Boolean {
         Log.d(TAG, "Navigating to path: $path")
 
+        val appBase = "https://classhopper.com/app/"
+        val normalizedPath = if (path.startsWith(appBase)) {
+            val raw = path.removePrefix(appBase)
+            val normalized = if (raw.startsWith("/")) raw else "/$raw"
+            if (normalized == "/") "/main" else normalized
+        } else {
+            path
+        }
+
         // 处理http/https URL
-        if (path.startsWith("http://") || path.startsWith("https://")) {
+        if (normalizedPath.startsWith("http://") || normalizedPath.startsWith("https://")) {
             try {
                 val intent = Intent(Intent.ACTION_VIEW)
-                intent.data = android.net.Uri.parse(path)
+                intent.data = normalizedPath.toUri()
                 // 如果上下文不是Activity，需要添加FLAG_ACTIVITY_NEW_TASK
                 if (context !is android.app.Activity) {
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -72,11 +82,11 @@ object NavigationManager {
         }
 
         // 处理自定义协议URL
-        val processedPath = if (path.startsWith("classhopper://")) {
+        val processedPath = if (normalizedPath.startsWith("classhopper://")) {
             // 提取协议后面的路径部分，如 "classhopper://announcement" -> "/announcement"
-            "/" + path.substring("classhopper://".length)
+            "/" + normalizedPath.substring("classhopper://".length)
         } else {
-            path
+            normalizedPath
         }
 
         // 解析路径和参数
