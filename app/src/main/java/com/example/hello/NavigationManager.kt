@@ -8,6 +8,7 @@ import android.util.Log
 import com.example.hello.activity.*
 import java.util.concurrent.ConcurrentHashMap
 import androidx.core.net.toUri
+import androidx.core.app.TaskStackBuilder
 
 @SuppressLint("StaticFieldLeak")
 object NavigationManager {
@@ -99,15 +100,21 @@ object NavigationManager {
             return false
         }
 
-        // 创建Intent并添加参数
         val intent = Intent(context, activityClass)
         params.forEach { (key, value) ->
             intent.putExtra(key, value)
         }
 
-        // 启动Activity
         try {
-            // 如果上下文不是Activity，需要添加FLAG_ACTIVITY_NEW_TASK
+            val needsBackStack = activityClass != MainActivity::class.java &&
+                (context !is android.app.Activity || context.isTaskRoot)
+            if (needsBackStack) {
+                val stackBuilder = TaskStackBuilder.create(context)
+                    .addNextIntent(Intent(context, MainActivity::class.java))
+                    .addNextIntent(intent)
+                stackBuilder.startActivities()
+                return true
+            }
             if (context !is android.app.Activity) {
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
