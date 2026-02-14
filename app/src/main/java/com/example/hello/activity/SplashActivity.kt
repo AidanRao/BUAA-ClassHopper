@@ -6,6 +6,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.widget.ImageView
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.bumptech.glide.Glide
 import com.example.hello.NavigationManager
@@ -14,20 +15,37 @@ import com.example.hello.service.ApiService
 import com.example.hello.utils.DeviceIdUtil
 
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.ceil
+import kotlin.math.max
 
 class SplashActivity : AppCompatActivity() {
     private lateinit var splashImage: ImageView
+    private lateinit var skipText: TextView
     private lateinit var apiService: ApiService
     private var splashData: SplashResponseData? = null
     private val TAG = "SplashActivity"
     private var splashHandler: Handler? = null
+    private var skipRemainingSeconds = 0
+    private val skipCountdownRunnable = object : Runnable {
+        override fun run() {
+            if (isNavigated.get()) {
+                return
+            }
+            if (skipRemainingSeconds <= 0) {
+                return
+            }
+            skipText.text = getString(R.string.splash_skip_countdown, skipRemainingSeconds)
+            skipRemainingSeconds -= 1
+            splashHandler?.postDelayed(this, 1000L)
+        }
+    }
     
     // 防止重复跳转
     private val isNavigated = AtomicBoolean(false)
     // 获取广告数据的超时时间
     private val FETCH_TIMEOUT = 2000L 
     
-    private val BASE_URL = "https://101.42.43.228/api/"
+    private val BASE_URL = "http://39.105.96.112/api/"
 
     private val fetchTimeoutRunnable = Runnable {
         Log.w(TAG, "获取开屏广告超时，直接跳转主页")
@@ -39,6 +57,7 @@ class SplashActivity : AppCompatActivity() {
         setContentView(R.layout.activity_splash)
 
         splashImage = findViewById(R.id.splash_image)
+        skipText = findViewById(R.id.skip_text)
         apiService = ApiService(this)
         
         splashHandler = Handler(Looper.getMainLooper())
@@ -52,6 +71,10 @@ class SplashActivity : AppCompatActivity() {
         // 设置图片点击事件
         splashImage.setOnClickListener {
             handleSplashClick()
+        }
+
+        skipText.setOnClickListener {
+            navigateToMain()
         }
     }
 
@@ -133,6 +156,13 @@ class SplashActivity : AppCompatActivity() {
             3000L // 默认3秒
         }
 
+        splashHandler?.removeCallbacks(skipCountdownRunnable)
+        val totalSeconds = max(1, ceil(duration / 1000.0).toInt())
+        skipRemainingSeconds = totalSeconds
+        skipText.text = getString(R.string.splash_skip_countdown, skipRemainingSeconds)
+        skipRemainingSeconds -= 1
+        splashHandler?.postDelayed(skipCountdownRunnable, 1000L)
+
         // 定时器结束后跳转到主页面
         splashHandler?.postDelayed({
             navigateToMain()
@@ -176,6 +206,11 @@ class SplashActivity : AppCompatActivity() {
             startActivity(intent)
             finish()
         }
+    }
+
+    override fun onDestroy() {
+        splashHandler?.removeCallbacksAndMessages(null)
+        super.onDestroy()
     }
 
     // 开屏广告响应数据模型
