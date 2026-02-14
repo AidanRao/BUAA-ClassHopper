@@ -504,6 +504,58 @@ class ApiService(private val context: Context) {
         fun onFailure(error: String)
     }
 
+    interface OnQRCodeInfoListener {
+        fun onSuccess(info: QRCodeInfoData)
+        fun onFailure(error: String)
+    }
+
+    data class QRCodeInfoResponse(
+        val code: Int,
+        val msg: String,
+        val data: QRCodeInfoData?
+    )
+
+    data class QRCodeInfoData(
+        val status: String?,
+        val token: String?,
+        val expireAt: String?,
+        val ipAddress: String?,
+        val browser: String?,
+        val os: String?,
+        val device: String?,
+        val requestTime: String?
+    )
+
+    fun getQRCodeInfo(scanId: String, listener: OnQRCodeInfoListener) {
+        val url = BASE_URL + "user/auth/qrcode?scanId=$scanId"
+        val request = Request.Builder()
+            .url(url)
+            .get()
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                listener.onFailure("网络错误: ${e.message}")
+                e.printStackTrace()
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                try {
+                    val responseData = response.body?.string()
+                    val infoResponse = gson.fromJson(responseData, QRCodeInfoResponse::class.java)
+                    if (infoResponse.code == 1 && infoResponse.data != null) {
+                        listener.onSuccess(infoResponse.data)
+                    } else {
+                        listener.onFailure("获取扫码信息失败: ${infoResponse.msg}")
+                    }
+                } catch (e: Exception) {
+                    listener.onFailure("解析扫码信息失败: ${e.message}")
+                    e.printStackTrace()
+                }
+            }
+        })
+    }
+
     // 扫码登录确认相关接口
     fun confirmQRCodeLogin(token: String, scanId: String, listener: OnQRCodeLoginListener) {
         val url = BASE_URL + "user/auth/qrcode/confirm?scanId=$scanId"

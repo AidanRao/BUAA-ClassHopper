@@ -16,6 +16,11 @@ class ScanLoginActivity : AppCompatActivity() {
     private lateinit var loadingView: View
     private lateinit var contentView: View
     private lateinit var statusTextView: TextView
+    private lateinit var ipTextView: TextView
+    private lateinit var osTextView: TextView
+    private lateinit var browserTextView: TextView
+    private lateinit var deviceTextView: TextView
+    private lateinit var requestTimeTextView: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,6 +39,11 @@ class ScanLoginActivity : AppCompatActivity() {
         loadingView = findViewById(R.id.loading_view)
         contentView = findViewById(R.id.content_view)
         statusTextView = findViewById(R.id.status_text_view)
+        ipTextView = findViewById(R.id.ip_text_view)
+        osTextView = findViewById(R.id.os_text_view)
+        browserTextView = findViewById(R.id.browser_text_view)
+        deviceTextView = findViewById(R.id.device_text_view)
+        requestTimeTextView = findViewById(R.id.request_time_text_view)
 
         // 设置按钮点击事件
         confirmButton.setOnClickListener {
@@ -43,6 +53,37 @@ class ScanLoginActivity : AppCompatActivity() {
         cancelButton.setOnClickListener {
             finish()
         }
+
+        loadScanInfo()
+    }
+
+    private fun loadScanInfo() {
+        loadingView.visibility = View.VISIBLE
+        contentView.visibility = View.GONE
+
+        val apiService = ApiService(this)
+        apiService.getQRCodeInfo(scanId, object : ApiService.OnQRCodeInfoListener {
+            override fun onSuccess(info: ApiService.QRCodeInfoData) {
+                runOnUiThread {
+                    ipTextView.text = info.ipAddress ?: "-"
+                    osTextView.text = info.os ?: "-"
+                    browserTextView.text = info.browser ?: "-"
+                    deviceTextView.text = info.device ?: "-"
+                    requestTimeTextView.text = info.requestTime ?: "-"
+                    loadingView.visibility = View.GONE
+                    contentView.visibility = View.VISIBLE
+                }
+            }
+
+            override fun onFailure(error: String) {
+                runOnUiThread {
+                    statusTextView.text = "获取扫码信息失败"
+                    Toast.makeText(this@ScanLoginActivity, error, Toast.LENGTH_SHORT).show()
+                    loadingView.visibility = View.GONE
+                    contentView.visibility = View.VISIBLE
+                }
+            }
+        })
     }
 
     private fun confirmLogin() {
