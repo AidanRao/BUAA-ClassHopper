@@ -108,7 +108,6 @@ class SplashActivity : AppCompatActivity() {
             override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
                 try {
                     val responseData = response.body?.string()
-                    Log.d(TAG, "开屏广告响应: $responseData")
 
                     // 解析响应数据
                     val gson = com.google.gson.Gson()
@@ -116,7 +115,6 @@ class SplashActivity : AppCompatActivity() {
 
                     if (splashResponse.code == 1 && splashResponse.data != null) {
                         splashData = splashResponse.data
-                        Log.i("splash-api", "" + splashResponse.data)
                         runOnUiThread {
                             // 成功获取数据，取消超时检测
                             splashHandler?.removeCallbacks(fetchTimeoutRunnable)

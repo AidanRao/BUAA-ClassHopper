@@ -14,6 +14,7 @@ import java.security.SecureRandom
 import java.security.cert.X509Certificate
 import java.text.SimpleDateFormat
 import javax.net.ssl.*
+import androidx.core.content.edit
 
 class ApiService(private val context: Context) {
     private val BASE_URL = "http://39.105.96.112/api/"
@@ -87,7 +88,7 @@ class ApiService(private val context: Context) {
     }
 
     private fun saveCachedToken(token: String, expireAt: Long) {
-        authPrefs.edit().putString("token", token).putLong("expireAt", expireAt).apply()
+        authPrefs.edit { putString("token", token).putLong("expireAt", expireAt) }
     }
 
     private fun isTokenValid(token: String?, expireAt: Long?): Boolean {

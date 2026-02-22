@@ -104,7 +104,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun connectWebSocket() {
         apiService.getValidToken(object : ApiService.OnAuthListener {
             override fun onSuccess(token: String, expireAt: Long) {
-                Log.d("MainViewModel", "自动获取token成功")
+                Log.d("MainViewModel", "自动获取token成功: $token")
                 viewModelScope.launch(Dispatchers.Main) {
                     chatWebSocketService.connect(token, object : ChatWebSocketService.Listener {
                         override fun onOpen() {
