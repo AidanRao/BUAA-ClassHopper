@@ -34,7 +34,7 @@ class IclassApiService(private val context: Context) {
     private fun callFallbackCourseSchedule(dateStr: String, authToken: String, listener: OnCourseScheduleListener) {
         // 将日期格式从YYYYMMDD转换为YYYY-MM-DD以适应fallback API要求
         val formattedDate = if (dateStr.length == 8) {
-            "${dateStr.substring(0, 4)}-${dateStr.substring(4, 6)}-${dateStr.substring(6, 8)}"
+            "${dateStr.take(4)}-${dateStr.substring(4, 6)}-${dateStr.substring(6, 8)}"
         } else {
             dateStr // 如果不是预期格式，保持原样
         }
@@ -75,7 +75,7 @@ class IclassApiService(private val context: Context) {
                     }
                     
                     val fallbackCourses = fallbackResponse.data.result
-                    if (fallbackCourses.isNullOrEmpty()) {
+                    if (fallbackCourses.isEmpty()) {
                         listener.onEmpty()
                         return
                     }
