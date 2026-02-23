@@ -3,10 +3,8 @@ package com.example.hello.data.repository
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
-import com.example.hello.BuildConfig
 import com.example.hello.data.api.AuthApi
 import com.example.hello.data.model.dto.AuthRequest
-import com.example.hello.data.model.dto.AuthResponse
 import com.example.hello.utils.DeviceIdUtil
 import com.example.hello.utils.SignUtils
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -38,6 +36,21 @@ class TokenManager @Inject constructor(
     
     @Volatile
     private var cachedExpireAt: Long? = null
+
+    fun getCachedToken(): String? {
+        if (isTokenValid(cachedToken, cachedExpireAt)) {
+            return cachedToken
+        }
+        
+        val (storedToken, storedExpireAt) = readCachedToken()
+        if (isTokenValid(storedToken, storedExpireAt)) {
+            cachedToken = storedToken
+            cachedExpireAt = storedExpireAt
+            return storedToken
+        }
+        
+        return null
+    }
 
     suspend fun getValidToken(): String? {
         mutex.withLock {
@@ -122,7 +135,7 @@ class TokenManager @Inject constructor(
         return try {
             val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.getDefault())
             val date = sdf.parse(expireAtStr.substringBeforeLast('Z'))
-            date?.time ?: System.currentTimeMillis() + 2 * 60 * 60 * 1000
+            date?.time ?: (System.currentTimeMillis() + 2 * 60 * 60 * 1000)
         } catch (e: Exception) {
             System.currentTimeMillis() + 2 * 60 * 60 * 1000
         }

@@ -1,13 +1,10 @@
 package com.example.hello.data.api.interceptor
 
-import android.content.Context
 import android.util.Log
 import com.example.hello.data.repository.TokenManager
-import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
 import okhttp3.Response
 import javax.inject.Inject
-import javax.inject.Singleton
 
 class AuthInterceptor @Inject constructor(
     private val tokenManager: TokenManager
@@ -22,7 +19,7 @@ class AuthInterceptor @Inject constructor(
         val originalRequest = chain.request()
         val url = originalRequest.url.toString()
         
-        val token = runBlocking { tokenManager.getValidToken() }
+        val token = tokenManager.getCachedToken()
         
         val newRequest = if (token != null && shouldAddAuthHeader(url)) {
             originalRequest.newBuilder()
@@ -32,14 +29,7 @@ class AuthInterceptor @Inject constructor(
             originalRequest
         }
         
-        val response = chain.proceed(newRequest)
-        
-        if (response.code == 401) {
-            Log.w(TAG, "Received 401, token may be expired")
-            runBlocking { tokenManager.invalidateToken() }
-        }
-        
-        return response
+        return chain.proceed(newRequest)
     }
 
     private fun shouldAddAuthHeader(url: String): Boolean {

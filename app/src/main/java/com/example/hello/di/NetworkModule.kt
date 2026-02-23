@@ -10,6 +10,7 @@ import com.example.hello.data.api.UserApi
 import com.example.hello.data.api.interceptor.AuthInterceptor
 import com.example.hello.data.api.interceptor.LoggingInterceptor
 import com.example.hello.data.api.interceptor.SslTrustManager
+import com.example.hello.data.api.interceptor.TokenAuthenticator
 import com.example.hello.data.repository.TokenManager
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -60,13 +61,15 @@ object NetworkModule {
     @Singleton
     fun provideOkHttpClient(
         authInterceptor: AuthInterceptor,
-        loggingInterceptor: LoggingInterceptor
+        loggingInterceptor: LoggingInterceptor,
+        tokenAuthenticator: TokenAuthenticator
     ): OkHttpClient {
         return OkHttpClient.Builder()
             .sslSocketFactory(SslTrustManager.getUnsafeSslSocketFactory(), SslTrustManager.getUnsafeTrustManager())
             .hostnameVerifier { _, _ -> true }
             .addInterceptor(authInterceptor)
             .addInterceptor(loggingInterceptor)
+            .authenticator(tokenAuthenticator)
             .build()
     }
 
@@ -140,6 +143,12 @@ object NetworkModule {
     @Singleton
     fun provideAuthInterceptor(tokenManager: TokenManager): AuthInterceptor {
         return AuthInterceptor(tokenManager)
+    }
+
+    @Provides
+    @Singleton
+    fun provideTokenAuthenticator(tokenManager: TokenManager): TokenAuthenticator {
+        return TokenAuthenticator(tokenManager)
     }
 
     @Provides
