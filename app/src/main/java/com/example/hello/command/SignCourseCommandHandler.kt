@@ -1,9 +1,14 @@
 package com.example.hello.command
 
 import android.content.Context
+import com.example.hello.AppApplication
 import com.example.hello.command.model.CommandDTO
 import com.example.hello.command.model.CommandExecutionResult
-import com.example.hello.service.IclassApiService
+import com.example.hello.data.model.Result
+import com.example.hello.data.repository.CourseRepository
+import com.example.hello.di.RepositoryEntryPoint
+import dagger.hilt.android.EntryPointAccessors
+import kotlinx.coroutines.runBlocking
 
 class SignCourseCommandHandler(private val context: Context) : CommandHandler {
     override fun getCommandType(): String = "signCourse"
@@ -37,55 +42,49 @@ class SignCourseCommandHandler(private val context: Context) : CommandHandler {
             )
         }
 
-        // 由于ApiService的方法是异步的，而CommandHandler的execute方法是同步的
-        // 我们需要使用一个同步的方式来等待结果
-        val lock = Object()
-        var result: CommandExecutionResult? = null
-
-        val iclassApiService = IclassApiService(context)
-        iclassApiService.signClass(studentId, courseId, object : IclassApiService.OnSignListener {
-            override fun onSuccess() {
-                synchronized(lock) {
-                    result = CommandExecutionResult(
-                        commandId = command.commandId,
-                        success = true,
-                        message = "Sign course successful"
-                    )
-                    lock.notify()
+        return runBlocking {
+            try {
+                val courseRepository = getCourseRepository()
+                
+                when (val result = courseRepository.signClass(studentId, courseId)) {
+                    is Result.Success -> {
+                        CommandExecutionResult(
+                            commandId = command.commandId,
+                            success = true,
+                            message = "Sign course successful"
+                        )
+                    }
+                    is Result.Error -> {
+                        CommandExecutionResult(
+                            commandId = command.commandId,
+                            success = false,
+                            message = result.getErrorMessage() ?: "Sign course failed"
+                        )
+                    }
+                    Result.Loading -> {
+                        CommandExecutionResult(
+                            commandId = command.commandId,
+                            success = false,
+                            message = "Sign course loading"
+                        )
+                    }
                 }
-            }
-
-            override fun onFailure(error: String) {
-                synchronized(lock) {
-                    result = CommandExecutionResult(
-                        commandId = command.commandId,
-                        success = false,
-                        message = error
-                    )
-                    lock.notify()
-                }
-            }
-        }, null)
-
-        // 等待结果
-        synchronized(lock) {
-            if (result == null) {
-                try {
-                    lock.wait(10000) // 10秒超时
-                } catch (e: InterruptedException) {
-                    return CommandExecutionResult(
-                        commandId = command.commandId,
-                        success = false,
-                        message = "Sign course interrupted"
-                    )
-                }
+            } catch (e: Exception) {
+                CommandExecutionResult(
+                    commandId = command.commandId,
+                    success = false,
+                    message = "Sign course failed: ${e.message}"
+                )
             }
         }
+    }
 
-        return result ?: CommandExecutionResult(
-            commandId = command.commandId,
-            success = false,
-            message = "Sign course timed out"
+    private fun getCourseRepository(): CourseRepository {
+        val appContext = AppApplication.instance.applicationContext
+        val hiltEntryPoint = EntryPointAccessors.fromApplication(
+            appContext,
+            RepositoryEntryPoint::class.java
         )
+        return hiltEntryPoint.courseRepository()
     }
 }

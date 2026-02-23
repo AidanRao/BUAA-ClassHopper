@@ -11,21 +11,26 @@ import androidx.appcompat.app.AppCompatActivity
 import com.bumptech.glide.Glide
 import com.example.hello.NavigationManager
 import com.example.hello.R
-import com.example.hello.service.ApiService
 import com.example.hello.utils.DeviceIdUtil
-
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.security.SecureRandom
+import java.security.cert.X509Certificate
 import java.util.concurrent.atomic.AtomicBoolean
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManager
+import javax.net.ssl.X509TrustManager
 import kotlin.math.ceil
 import kotlin.math.max
 
 class SplashActivity : AppCompatActivity() {
     private lateinit var splashImage: ImageView
     private lateinit var skipText: TextView
-    private lateinit var apiService: ApiService
     private var splashData: SplashResponseData? = null
     private val TAG = "SplashActivity"
     private var splashHandler: Handler? = null
     private var skipRemainingSeconds = 0
+    
     private val skipCountdownRunnable = object : Runnable {
         override fun run() {
             if (isNavigated.get()) {
@@ -40,9 +45,7 @@ class SplashActivity : AppCompatActivity() {
         }
     }
     
-    // 防止重复跳转
     private val isNavigated = AtomicBoolean(false)
-    // 获取广告数据的超时时间
     private val FETCH_TIMEOUT = 2000L 
     
     private val BASE_URL = "http://39.105.96.112/api/"
@@ -52,13 +55,28 @@ class SplashActivity : AppCompatActivity() {
         navigateToMain()
     }
 
+    private val client: OkHttpClient by lazy {
+        val trustAllCerts = arrayOf<TrustManager>(object : X509TrustManager {
+            override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
+            override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
+            override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
+        })
+        
+        val sslContext = SSLContext.getInstance("TLS")
+        sslContext.init(null, trustAllCerts, SecureRandom())
+        
+        OkHttpClient.Builder()
+            .sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as X509TrustManager)
+            .hostnameVerifier { _, _ -> true }
+            .build()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_splash)
 
         splashImage = findViewById(R.id.splash_image)
         skipText = findViewById(R.id.skip_text)
-        apiService = ApiService(this)
         
         splashHandler = Handler(Looper.getMainLooper())
 
@@ -68,7 +86,6 @@ class SplashActivity : AppCompatActivity() {
         // 获取开屏广告数据
         fetchSplashData()
 
-        // 设置图片点击事件
         splashImage.setOnClickListener {
             handleSplashClick()
         }
@@ -78,25 +95,17 @@ class SplashActivity : AppCompatActivity() {
         }
     }
 
-    // 获取开屏广告数据
     private fun fetchSplashData() {
         val appKey = "buaa-classhopper-android"
         val appUUID = DeviceIdUtil.getPersistentUUID(this)
 
-        // 构建请求参数
-        val params = mapOf(
-            "platform" to appKey,
-            "deviceId" to appUUID
-        )
-
-        // 发送请求获取开屏广告数据
         val url = BASE_URL + "message/splash/fetch?platform=$appKey&deviceId=$appUUID"
-        val request = okhttp3.Request.Builder()
+        val request = Request.Builder()
             .url(url)
             .get()
             .build()
 
-        apiService.client.newCall(request).enqueue(object : okhttp3.Callback {
+        client.newCall(request).enqueue(object : okhttp3.Callback {
             override fun onFailure(call: okhttp3.Call, e: java.io.IOException) {
                 Log.e(TAG, "获取开屏广告失败: ${e.message}")
                 runOnUiThread {
@@ -109,7 +118,6 @@ class SplashActivity : AppCompatActivity() {
                 try {
                     val responseData = response.body?.string()
 
-                    // 解析响应数据
                     val gson = com.google.gson.Gson()
                     val splashResponse = gson.fromJson(responseData, SplashResponse::class.java)
 
@@ -139,19 +147,16 @@ class SplashActivity : AppCompatActivity() {
         })
     }
 
-    // 显示开屏广告图片
     private fun showSplashImage(data: SplashResponseData) {
-        // 使用Glide加载图片
         Glide.with(this)
             .load(data.resourceUrl)
             .fitCenter()
             .into(splashImage)
 
-        // 设置广告显示时长
         val duration = try {
             data.duration.toLong()
         } catch (e: NumberFormatException) {
-            3000L // 默认3秒
+            3000L
         }
 
         splashHandler?.removeCallbacks(skipCountdownRunnable)
@@ -161,29 +166,23 @@ class SplashActivity : AppCompatActivity() {
         skipRemainingSeconds -= 1
         splashHandler?.postDelayed(skipCountdownRunnable, 1000L)
 
-        // 定时器结束后跳转到主页面
         splashHandler?.postDelayed({
             navigateToMain()
         }, duration)
     }
 
-    // 处理开屏广告点击事件
     private fun handleSplashClick() {
-        // 取消定时器，防止点击后仍跳转到主页面
         splashHandler?.removeCallbacksAndMessages(null)
         
         splashData?.let {
             when (it.clickAction) {
                 "JUMP_URL" -> {
-                    // 处理跳转逻辑
                     if (it.clickUrl.isNotEmpty()) {
                         NavigationManager.navigate(this, it.clickUrl)
-                        // 跳转到目标页面后，关闭当前SplashActivity
                         finish()
                     }
                 }
                 "NONE" -> {
-                    // 什么都不做，直接跳转到主页面
                     navigateToMain()
                 }
                 else -> {
@@ -195,10 +194,8 @@ class SplashActivity : AppCompatActivity() {
         }
     }
 
-    // 跳转到主页面
     private fun navigateToMain() {
         if (isNavigated.compareAndSet(false, true)) {
-            // 确保移除所有回调，防止内存泄漏或逻辑错误
             splashHandler?.removeCallbacksAndMessages(null)
             val intent = Intent(this, MainActivity::class.java)
             startActivity(intent)
@@ -211,7 +208,6 @@ class SplashActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-    // 开屏广告响应数据模型
     data class SplashResponse(
         val code: Int,
         val msg: String,
