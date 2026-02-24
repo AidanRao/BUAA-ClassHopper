@@ -158,6 +158,11 @@ class MainActivity : AppCompatActivity() {
                     if (container != null) drawerLayout.closeDrawer(container)
                     true
                 }
+                R.id.menu_lab -> {
+                    NavigationManager.navigate(this, "/lab")
+                    if (container != null) drawerLayout.closeDrawer(container)
+                    true
+                }
                 R.id.menu_settings -> {
                     viewModel.fetchUserProfile()
                     NavigationManager.navigate(this, "/settings")

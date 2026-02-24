@@ -5,7 +5,9 @@ import com.example.hello.data.api.AnnouncementApi
 import com.example.hello.data.api.AuthApi
 import com.example.hello.data.api.FallbackApi
 import com.example.hello.data.api.IclassApi
+import com.example.hello.data.api.LabApi
 import com.example.hello.data.api.QRCodeApi
+import com.example.hello.data.api.RateMonitorApi
 import com.example.hello.data.api.UserApi
 import com.example.hello.data.api.interceptor.AuthInterceptor
 import com.example.hello.data.api.interceptor.LoggingInterceptor
@@ -137,6 +139,28 @@ object NetworkModule {
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
             .create(QRCodeApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideLabApi(gson: Gson, okHttpClient: OkHttpClient): LabApi {
+        return Retrofit.Builder()
+            .baseUrl(BASE_URL)
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .build()
+            .create(LabApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideRateMonitorApi(gson: Gson, okHttpClient: OkHttpClient): RateMonitorApi {
+        return Retrofit.Builder()
+            .baseUrl(BASE_URL)
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .build()
+            .create(RateMonitorApi::class.java)
     }
 
     @Provides

@@ -45,6 +45,16 @@
             android:exported="false"
             android:theme="@style/Theme.Hello" />
         <activity
+            android:name=".activity.LabActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Hello"
+            android:label="实验室" />
+        <activity
+            android:name=".activity.RateMonitorActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Hello"
+            android:label="汇率监控" />
+        <activity
             android:name=".activity.SettingsActivity"
             android:exported="false"
             android:theme="@style/Theme.Hello" />
