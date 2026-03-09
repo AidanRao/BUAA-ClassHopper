@@ -7,7 +7,7 @@ import android.widget.Button
 import android.widget.TableLayout
 import android.widget.TableRow
 import android.widget.TextView
-import com.example.hello.model.Course
+import com.example.hello.data.model.dto.CourseDto
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -16,8 +16,7 @@ class CourseTableRenderer(
     private val tableLayout: TableLayout,
     private val onSignClick: (courseId: Int) -> Unit,
 ) {
-    fun render(courses: List<Course>) {
-        // 清除之前的数据行，保留表头
+    fun render(courses: List<CourseDto>) {
         for (i in tableLayout.childCount - 1 downTo 1) {
             tableLayout.removeViewAt(i)
         }

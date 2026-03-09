@@ -11,6 +11,10 @@
             android:icon="@android:drawable/ic_menu_info_details"
             android:title="公告" />
         <item
+            android:id="@+id/menu_lab"
+            android:icon="@drawable/ic_lab_flask"
+            android:title="实验室" />
+        <item
             android:id="@+id/menu_settings"
             android:icon="@android:drawable/ic_menu_manage"
             android:title="设置" />

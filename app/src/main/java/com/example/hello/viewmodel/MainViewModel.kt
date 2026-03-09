@@ -1,31 +1,53 @@
 package com.example.hello.viewmodel
 
-import android.app.Application
 import android.util.Log
-import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hello.command.CommandDispatcher
 import com.example.hello.command.GetScheduleCommandHandler
 import com.example.hello.command.SignCourseCommandHandler
-import com.example.hello.model.Course
-import com.example.hello.service.ApiService
+import com.example.hello.data.model.Result
+import com.example.hello.data.model.dto.CourseDto
+import com.example.hello.data.model.dto.UserInfoDto
+import com.example.hello.data.repository.AnnouncementRepository
+import com.example.hello.data.repository.AuthRepository
+import com.example.hello.data.repository.CourseRepository
+import com.example.hello.data.repository.QRCodeRepository
+import com.example.hello.data.repository.UserRepository
 import com.example.hello.service.ChatWebSocketService
-import com.example.hello.service.IclassApiService
-import com.google.gson.*
+import com.google.gson.Gson
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonDeserializationContext
+import com.google.gson.JsonDeserializer
+import com.google.gson.JsonElement
+import com.google.gson.JsonPrimitive
+import com.google.gson.JsonSerializationContext
+import com.google.gson.JsonSerializer
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okio.ByteString
 import java.lang.reflect.Type
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import okio.ByteString
+import javax.inject.Inject
 
-class MainViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class MainViewModel @Inject constructor(
+    private val authRepository: AuthRepository,
+    private val userRepository: UserRepository,
+    private val announcementRepository: AnnouncementRepository,
+    private val courseRepository: CourseRepository,
+    private val qrCodeRepository: QRCodeRepository,
+    private val commandDispatcher: CommandDispatcher,
+    private val chatWebSocketService: ChatWebSocketService
+) : ViewModel() {
 
-    // UI State
-    private val _courses = MutableLiveData<List<Course>>()
-    val courses: LiveData<List<Course>> = _courses
+    private val _courses = MutableLiveData<List<CourseDto>>()
+    val courses: LiveData<List<CourseDto>> = _courses
 
     private val _userInfo = MutableLiveData<String>()
     val userInfo: LiveData<String> = _userInfo
@@ -42,10 +64,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _toastMessage = MutableLiveData<String>()
     val toastMessage: LiveData<String> = _toastMessage
 
-    // 防止并发请求的标志
     private var isRequestInProgress = false
 
-    // WebSocket State
     private val _webSocketStatus = MutableLiveData<WebSocketStatus>()
     val webSocketStatus: LiveData<WebSocketStatus> = _webSocketStatus
 
@@ -53,59 +73,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         CONNECTED, CONNECTING, DISCONNECTED
     }
 
-    // Services
-    val apiService = ApiService(application)
-    private val iclassApiService = IclassApiService(application)
-    // 临时跳过 TLS 证书校验（仅用于测试环境，正式环境务必改回 false）
-    private val ALLOW_INSECURE_TLS = true
-    private val chatWebSocketService = ChatWebSocketService(allowInsecureForDebug = ALLOW_INSECURE_TLS)
-
-    private val commandDispatcher = CommandDispatcher()
-
-    // Data
     private var currentUserId: String? = null
     private var currentSessionId: String? = null
-    var token: String? = null
-    var expireAt: Long? = null
-    // 创建支持LocalDateTime的Gson实例
-    private val gson = GsonBuilder()
+    
+    private val gson: Gson = GsonBuilder()
         .registerTypeAdapter(LocalDateTime::class.java, LocalDateTimeSerializer())
         .registerTypeAdapter(LocalDateTime::class.java, LocalDateTimeDeserializer())
         .create()
-    
+
+    private val _userProfile = MutableLiveData<UserInfoDto>()
+    val userProfile: LiveData<UserInfoDto> = _userProfile
+
     init {
-        // 注册命令处理器
-        commandDispatcher.registerHandler(GetScheduleCommandHandler(application))
-        commandDispatcher.registerHandler(SignCourseCommandHandler(application))
         _webSocketStatus.value = WebSocketStatus.CONNECTING
         connectWebSocket()
     }
-    
-    // LocalDateTime序列化器
-    private class LocalDateTimeSerializer : JsonSerializer<LocalDateTime> {
-        private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-        
-        override fun serialize(src: LocalDateTime?, typeOfSrc: Type?, context: JsonSerializationContext?): JsonElement {
-            return JsonPrimitive(src?.format(formatter))
-        }
-    }
-    
-    // LocalDateTime反序列化器
-    private class LocalDateTimeDeserializer : JsonDeserializer<LocalDateTime> {
-        private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-        
-        override fun deserialize(json: JsonElement?, typeOfT: Type?, context: JsonDeserializationContext?): LocalDateTime? {
-            return json?.asString?.let {
-                LocalDateTime.parse(it, formatter)
-            }
-        }
-    }
 
     private fun connectWebSocket() {
-        apiService.getValidToken(object : ApiService.OnAuthListener {
-            override fun onSuccess(token: String, expireAt: Long) {
-                Log.d("MainViewModel", "自动获取token成功: $token")
-                viewModelScope.launch(Dispatchers.Main) {
+        viewModelScope.launch {
+            val token = authRepository.getValidToken()
+            if (token != null) {
+                Log.d("MainViewModel", "获取token成功: $token")
+                withContext(Dispatchers.Main) {
                     chatWebSocketService.connect(token, object : ChatWebSocketService.Listener {
                         override fun onOpen() {
                             _webSocketStatus.postValue(WebSocketStatus.CONNECTED)
@@ -143,13 +132,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         }
                     })
                 }
-            }
-
-            override fun onFailure(error: String) {
-                Log.e("MainViewModel", "获取token失败: $error")
+            } else {
+                Log.e("MainViewModel", "获取token失败")
                 _webSocketStatus.postValue(WebSocketStatus.DISCONNECTED)
             }
-        })
+        }
     }
 
     fun getClassInfo(studentId: String, date: String) {
@@ -167,116 +154,126 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _isLoading.postValue(true)
         _isEmpty.postValue(false)
 
-        iclassApiService.login(studentId, object : IclassApiService.OnLoginListener {
-            override fun onSuccess(userId: String, sessionId: String, realName: String, academyName: String) {
-                currentUserId = userId
-                currentSessionId = sessionId
-                _userInfo.postValue("$realName - $academyName")
-
-                val dateStr = date.replace("-", "")
-                iclassApiService.getCourseSchedule(userId, sessionId, dateStr, object : IclassApiService.OnCourseScheduleListener {
-                    override fun onSuccess(courses: List<Course>) {
-                        _isLoading.postValue(false)
-                        _courses.postValue(courses)
-                        isRequestInProgress = false
-                    }
-
-                    override fun onEmpty() {
-                        _isLoading.postValue(false)
-                        _isEmpty.postValue(true)
-                        isRequestInProgress = false
-                    }
-
-                    override fun onFailure(error: String) {
-                        _isLoading.postValue(false)
-                        _error.postValue(error)
-                        isRequestInProgress = false
-                    }
-                })
-            }
-
-            override fun onFailure(error: String) {
-                val cachedToken = apiService.getCachedToken()
-                if (cachedToken != null) {
+        viewModelScope.launch {
+            val loginResult = courseRepository.login(studentId)
+            
+            when (loginResult) {
+                is Result.Success -> {
+                    val loginData = loginResult.data.result
+                    currentUserId = loginData.id
+                    currentSessionId = loginData.sessionId
+                    _userInfo.postValue("${loginData.realName} - ${loginData.academyName}")
+                    
                     val dateStr = date.replace("-", "")
-                    iclassApiService.getCourseSchedule("", "", dateStr, object : IclassApiService.OnCourseScheduleListener {
-                        override fun onSuccess(courses: List<Course>) {
-                            _isLoading.postValue(false)
-                            _courses.postValue(courses)
-                            isRequestInProgress = false
-                        }
-
-                        override fun onEmpty() {
-                            _isLoading.postValue(false)
-                            _isEmpty.postValue(true)
-                            isRequestInProgress = false
-                        }
-
-                        override fun onFailure(error: String) {
-                            _isLoading.postValue(false)
-                            _error.postValue(error)
-                            isRequestInProgress = false
-                        }
-                    }, cachedToken)
-                } else {
-                    _isLoading.postValue(false)
-                    _error.postValue(error)
-                    isRequestInProgress = false
+                    fetchCourseSchedule(loginData.id, loginData.sessionId, dateStr)
                 }
+                is Result.Error -> {
+                    val token = authRepository.getValidToken()
+                    if (token != null) {
+                        val dateStr = date.replace("-", "")
+                        fetchCourseScheduleFallback(dateStr)
+                    } else {
+                        _isLoading.postValue(false)
+                        _error.postValue(loginResult.getErrorMessage() ?: "登录失败")
+                        isRequestInProgress = false
+                    }
+                }
+                Result.Loading -> {}
             }
-        })
+        }
+    }
+
+    private suspend fun fetchCourseSchedule(userId: String, sessionId: String, dateStr: String) {
+        when (val result = courseRepository.getCourseSchedule(userId, sessionId, dateStr)) {
+            is Result.Success -> {
+                _isLoading.postValue(false)
+                val courseList = result.data
+                if (courseList.isEmpty()) {
+                    _isEmpty.postValue(true)
+                } else {
+                    _courses.postValue(courseList)
+                }
+                isRequestInProgress = false
+            }
+            is Result.Error -> {
+                _isLoading.postValue(false)
+                _error.postValue(result.getErrorMessage() ?: "获取课表失败")
+                isRequestInProgress = false
+            }
+            Result.Loading -> {}
+        }
+    }
+
+    private suspend fun fetchCourseScheduleFallback(dateStr: String) {
+        when (val result = courseRepository.getCourseScheduleFallback(dateStr)) {
+            is Result.Success -> {
+                _isLoading.postValue(false)
+                val courseList = result.data
+                if (courseList.isEmpty()) {
+                    _isEmpty.postValue(true)
+                } else {
+                    _courses.postValue(courseList)
+                }
+                isRequestInProgress = false
+            }
+            is Result.Error -> {
+                _isLoading.postValue(false)
+                _error.postValue(result.getErrorMessage() ?: "获取课表失败")
+                isRequestInProgress = false
+            }
+            Result.Loading -> {}
+        }
     }
 
     fun signClass(studentId: String, courseId: Int, date: String) {
-        apiService.getValidToken(object : ApiService.OnAuthListener {
-            override fun onSuccess(token: String, expireAt: Long) {
-                iclassApiService.signClass(studentId, courseId, object : IclassApiService.OnSignListener {
-                    override fun onSuccess() {
-                        _toastMessage.postValue("签到成功")
-                        getClassInfo(studentId, date)
-                    }
-
-                    override fun onFailure(error: String) {
-                        _error.postValue(error)
-                    }
-                }, token)
+        viewModelScope.launch {
+            when (val result = courseRepository.signClass(studentId, courseId)) {
+                is Result.Success -> {
+                    _toastMessage.postValue("签到成功")
+                    getClassInfo(studentId, date)
+                }
+                is Result.Error -> {
+                    _error.postValue(result.getErrorMessage() ?: "签到失败")
+                }
+                Result.Loading -> {}
             }
+        }
+    }
 
-            override fun onFailure(error: String) {
-                _error.postValue(error)
+    fun fetchUserProfile() {
+        viewModelScope.launch {
+            when (val result = userRepository.getUserInfo()) {
+                is Result.Success -> {
+                    _userProfile.postValue(result.data)
+                }
+                is Result.Error -> {
+                    Log.e("MainViewModel", "获取用户信息失败: ${result.getErrorMessage()}")
+                }
+                Result.Loading -> {}
             }
-        })
+        }
     }
 
     override fun onCleared() {
         super.onCleared()
         chatWebSocketService.close()
     }
-    
-    // 用户信息相关
-    private val _userProfile = MutableLiveData<ApiService.UserInfoResponse.UserInfoData>()
-    val userProfile: LiveData<ApiService.UserInfoResponse.UserInfoData> = _userProfile
-    
-    // 获取用户信息
-    fun fetchUserProfile() {
-        apiService.getValidToken(object : ApiService.OnAuthListener {
-            override fun onSuccess(token: String, expireAt: Long) {
-                this@MainViewModel.token = token
-                this@MainViewModel.expireAt = expireAt
-                apiService.getUserInfo(token, object : ApiService.OnUserInfoListener {
-                    override fun onSuccess(userInfo: ApiService.UserInfoResponse.UserInfoData) {
-                        _userProfile.postValue(userInfo)
-                    }
 
-                    override fun onFailure(error: String) {
-                        Log.e("MainViewModel", "获取用户信息失败: $error")
-                    }
-                })
+    private class LocalDateTimeSerializer : JsonSerializer<LocalDateTime> {
+        private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+        
+        override fun serialize(src: LocalDateTime?, typeOfSrc: Type?, context: JsonSerializationContext?): JsonElement {
+            return JsonPrimitive(src?.format(formatter))
+        }
+    }
+    
+    private class LocalDateTimeDeserializer : JsonDeserializer<LocalDateTime> {
+        private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+        
+        override fun deserialize(json: JsonElement?, typeOfT: Type?, context: JsonDeserializationContext?): LocalDateTime? {
+            return json?.asString?.let {
+                LocalDateTime.parse(it, formatter)
             }
-
-            override fun onFailure(error: String) {
-                Log.e("MainViewModel", "获取token失败: $error")
-            }
-        })
+        }
     }
 }

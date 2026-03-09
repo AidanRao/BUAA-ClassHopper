@@ -5,29 +5,33 @@ import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import com.bumptech.glide.Glide
-import com.example.hello.service.ApiService
 import com.example.hello.R
+import com.example.hello.data.model.dto.AnnouncementDto
+import com.example.hello.viewmodel.AnnouncementViewModel
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class AnnouncementActivity : AppCompatActivity() {
 
     private lateinit var toolbar: Toolbar
     private lateinit var announcementListView: ListView
     private lateinit var progressBar: ProgressBar
     private lateinit var emptyTextView: TextView
-    private lateinit var apiService: ApiService
     private lateinit var announcementAdapter: AnnouncementAdapter
 
-    private val announcements = mutableListOf<ApiService.AnnouncementData>()
+    private val viewModel: AnnouncementViewModel by viewModels()
+    private val announcements = mutableListOf<AnnouncementDto>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_announcement)
 
         initViews()
-        initApiService()
+        initObservers()
         loadAnnouncements()
     }
 
@@ -55,46 +59,32 @@ class AnnouncementActivity : AppCompatActivity() {
         }
     }
 
-    private fun initApiService() {
-        apiService = ApiService(this)
+    private fun initObservers() {
+        viewModel.announcements.observe(this) { announcementList ->
+            announcements.clear()
+            announcements.addAll(announcementList)
+            announcementAdapter.notifyDataSetChanged()
+            
+            if (announcements.isEmpty()) {
+                showEmptyState()
+            } else {
+                hideProgress()
+            }
+        }
+
+        viewModel.isLoading.observe(this) { isLoading ->
+            if (isLoading) {
+                showProgress()
+            }
+        }
+
+        viewModel.error.observe(this) { errorMsg ->
+            showError(errorMsg)
+        }
     }
 
     private fun loadAnnouncements() {
-        showProgress()
-        
-        // 获取token并加载公告
-        apiService.getValidToken(object : ApiService.OnAuthListener {
-            override fun onSuccess(token: String, expireAt: Long) {
-                apiService.getAnnouncements(token, object : ApiService.OnAnnouncementsListener {
-                    override fun onSuccess(announcementList: List<ApiService.AnnouncementData>) {
-                        runOnUiThread {
-                            hideProgress()
-                            announcements.clear()
-                            announcements.addAll(announcementList)
-                            announcementAdapter.notifyDataSetChanged()
-                            
-                            if (announcements.isEmpty()) {
-                                showEmptyState()
-                            }
-                        }
-                    }
-
-                    override fun onFailure(error: String) {
-                        runOnUiThread {
-                            hideProgress()
-                            showError(error)
-                        }
-                    }
-                })
-            }
-
-            override fun onFailure(error: String) {
-                runOnUiThread {
-                    hideProgress()
-                    showError(error)
-                }
-            }
-        })
+        viewModel.loadAnnouncements()
     }
 
     private fun showProgress() {
@@ -111,28 +101,21 @@ class AnnouncementActivity : AppCompatActivity() {
     private fun showEmptyState() {
         emptyTextView.visibility = View.VISIBLE
         announcementListView.visibility = View.GONE
+        progressBar.visibility = View.GONE
     }
 
     private fun showError(error: String) {
-        runOnUiThread {
-            Toast.makeText(this, "加载公告失败: $error", Toast.LENGTH_SHORT).show()
-            showEmptyState()
-        }
+        Toast.makeText(this, "加载公告失败: $error", Toast.LENGTH_SHORT).show()
+        showEmptyState()
     }
 
-    private inner class AnnouncementAdapter(private val announcements: List<ApiService.AnnouncementData>) : BaseAdapter() {
+    private inner class AnnouncementAdapter(private val announcements: List<AnnouncementDto>) : BaseAdapter() {
 
-        override fun getCount(): Int {
-            return announcements.size
-        }
+        override fun getCount(): Int = announcements.size
 
-        override fun getItem(position: Int): Any {
-            return announcements[position]
-        }
+        override fun getItem(position: Int): Any = announcements[position]
 
-        override fun getItemId(position: Int): Long {
-            return position.toLong()
-        }
+        override fun getItemId(position: Int): Long = position.toLong()
 
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
             val view = convertView ?: layoutInflater.inflate(R.layout.item_announcement, parent, false)

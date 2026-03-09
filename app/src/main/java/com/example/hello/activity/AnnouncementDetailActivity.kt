@@ -4,12 +4,15 @@ import android.annotation.SuppressLint
 import android.os.Bundle
 import android.view.View
 import android.widget.*
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import com.bumptech.glide.Glide
-import com.example.hello.service.ApiService
 import com.example.hello.R
+import com.example.hello.viewmodel.AnnouncementViewModel
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class AnnouncementDetailActivity : AppCompatActivity() {
 
     private lateinit var toolbar: Toolbar
@@ -20,16 +23,16 @@ class AnnouncementDetailActivity : AppCompatActivity() {
     private lateinit var authorNameTextView: TextView
     private lateinit var authorAvatarImageView: ImageView
     private lateinit var progressBar: ProgressBar
-    private lateinit var apiService: ApiService
+
+    private val viewModel: AnnouncementViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_announcement_detail)
 
         initViews()
-        initApiService()
+        initObservers()
         
-        // 获取从Intent传递过来的公告ID
         val announcementId = intent.getStringExtra("ANNOUNCEMENT_ID")
         if (announcementId != null) {
             loadAnnouncementDetail(announcementId)
@@ -57,55 +60,37 @@ class AnnouncementDetailActivity : AppCompatActivity() {
         }
     }
 
-    private fun initApiService() {
-        apiService = ApiService(this)
+    private fun initObservers() {
+        viewModel.announcementDetail.observe(this) { detail ->
+            displayAnnouncementDetail(detail.title, detail.createTime, detail.cover, detail.content, detail.posterUsername, detail.posterAvatar)
+        }
+
+        viewModel.isLoading.observe(this) { isLoading ->
+            if (isLoading) {
+                showProgress()
+            } else {
+                hideProgress()
+            }
+        }
+
+        viewModel.error.observe(this) { errorMsg ->
+            showError(errorMsg)
+        }
     }
 
     private fun loadAnnouncementDetail(announcementId: String) {
-        showProgress()
-        
-        // 获取token并加载公告详情
-        apiService.getValidToken(object : ApiService.OnAuthListener {
-            override fun onSuccess(token: String, expireAt: Long) {
-                apiService.getAnnouncementDetail(token, announcementId, object : ApiService.OnAnnouncementDetailListener {
-                    override fun onSuccess(announcementDetail: ApiService.AnnouncementDetailData) {
-                        runOnUiThread {
-                            hideProgress()
-                            displayAnnouncementDetail(announcementDetail)
-                        }
-                    }
-
-                    override fun onFailure(error: String) {
-                        runOnUiThread {
-                            hideProgress()
-                            showError(error)
-                        }
-                    }
-                })
-            }
-
-            override fun onFailure(error: String) {
-                runOnUiThread {
-                    hideProgress()
-                    showError(error)
-                }
-            }
-        })
+        viewModel.loadAnnouncementDetail(announcementId)
     }
 
     @SuppressLint("SetTextI18n")
-    private fun displayAnnouncementDetail(announcementDetail: ApiService.AnnouncementDetailData) {
-        // 设置标题
-        titleTextView.text = announcementDetail.title
+    private fun displayAnnouncementDetail(title: String, createTime: String, cover: String?, content: String?, posterUsername: String?, posterAvatar: String?) {
+        titleTextView.text = title
+        timeTextView.text = createTime.substringBefore('T')
         
-        // 设置时间
-        timeTextView.text = announcementDetail.createTime.substringBefore('T')
-        
-        // 设置封面图
-        if (!announcementDetail.cover.isNullOrEmpty()) {
+        if (!cover.isNullOrEmpty()) {
             try {
                 Glide.with(this)
-                    .load(announcementDetail.cover)
+                    .load(cover)
                     .placeholder(android.R.drawable.ic_menu_gallery)
                     .error(android.R.drawable.ic_menu_gallery)
                     .into(coverImageView)
@@ -114,21 +99,16 @@ class AnnouncementDetailActivity : AppCompatActivity() {
             }
         }
         
-        // 设置内容
-        contentTextView.text = announcementDetail.content ?: ""
+        contentTextView.text = content ?: ""
         
-        // 设置作者信息
-        println("DEBUG: posterUsername = ${announcementDetail.posterUsername}")
-        println("DEBUG: posterAvatar = ${announcementDetail.posterAvatar}")
-        
-        authorNameTextView.text = "发布者: ${announcementDetail.posterUsername ?: "未知"}"
+        authorNameTextView.text = "发布者: ${posterUsername ?: "未知"}"
         authorNameTextView.visibility = View.VISIBLE
         
         authorAvatarImageView.visibility = View.VISIBLE
-        if (!announcementDetail.posterAvatar.isNullOrEmpty()) {
+        if (!posterAvatar.isNullOrEmpty()) {
             try {
                 Glide.with(this)
-                    .load(announcementDetail.posterAvatar)
+                    .load(posterAvatar)
                     .placeholder(android.R.drawable.ic_menu_gallery)
                     .error(android.R.drawable.ic_menu_gallery)
                     .into(authorAvatarImageView)
@@ -149,9 +129,6 @@ class AnnouncementDetailActivity : AppCompatActivity() {
     }
 
     private fun showError(error: String) {
-        runOnUiThread {
-            Toast.makeText(this, "加载公告详情失败: $error", Toast.LENGTH_SHORT).show()
-            // 可以添加空状态布局
-        }
+        Toast.makeText(this, "加载公告详情失败: $error", Toast.LENGTH_SHORT).show()
     }
 }

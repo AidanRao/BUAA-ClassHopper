@@ -31,6 +31,8 @@ object NavigationManager {
         registerPath("/main", MainActivity::class.java)
         registerPath("/announcement", AnnouncementActivity::class.java)
         registerPath("/announcement/detail", AnnouncementDetailActivity::class.java)
+        registerPath("/lab", LabActivity::class.java)
+        registerPath("/lab/rate-monitor", RateMonitorActivity::class.java)
         registerPath("/settings", SettingsActivity::class.java)
         registerPath("/verification", VerificationActivity::class.java)
         registerPath("/about", AboutActivity::class.java)
