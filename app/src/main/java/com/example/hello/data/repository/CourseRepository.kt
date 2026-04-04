@@ -36,7 +36,12 @@ class CourseRepository @Inject constructor(
         return withContext(Dispatchers.IO) {
             try {
                 val response = iclassApi.login(phone = studentId)
-                Result.success(response)
+                if (response.result != null) {
+                    Result.success(response)
+                } else {
+                    val errorMsg = response.ERRMSG ?: "登录失败"
+                    Result.error(Exception(errorMsg), errorMsg)
+                }
             } catch (e: Exception) {
                 Result.error(e, "登录失败: ${e.message}")
             }
@@ -104,8 +109,11 @@ class CourseRepository @Inject constructor(
                     }
                     return@withContext loginResult.map { Unit }
                 }
-                
-                val loginData = loginResult.getOrThrow().result
+
+                val loginData = loginResult.getOrThrow().result ?: return@withContext Result.error(
+                    Exception("登录失败"),
+                    "登录失败"
+                )
                 val timestamp = System.currentTimeMillis()
                 
                 val response = iclassApi.signClass(courseId, timestamp, loginData.id)

@@ -160,12 +160,18 @@ class MainViewModel @Inject constructor(
             when (loginResult) {
                 is Result.Success -> {
                     val loginData = loginResult.data.result
-                    currentUserId = loginData.id
-                    currentSessionId = loginData.sessionId
-                    _userInfo.postValue("${loginData.realName} - ${loginData.academyName}")
-                    
-                    val dateStr = date.replace("-", "")
-                    fetchCourseSchedule(loginData.id, loginData.sessionId, dateStr)
+                    if (loginData != null) {
+                        currentUserId = loginData.id
+                        currentSessionId = loginData.sessionId
+                        _userInfo.postValue("${loginData.realName} - ${loginData.academyName}")
+                        
+                        val dateStr = date.replace("-", "")
+                        fetchCourseSchedule(loginData.id, loginData.sessionId, dateStr)
+                    } else {
+                        _isLoading.postValue(false)
+                        _error.postValue(loginResult.data.ERRMSG ?: "登录失败")
+                        isRequestInProgress = false
+                    }
                 }
                 is Result.Error -> {
                     val token = authRepository.getValidToken()

@@ -18,7 +18,10 @@ data class CourseDto(
 )
 
 data class IclassLoginResponse(
-    val result: IclassLoginResult
+    val result: IclassLoginResult? = null,
+    val STATUS: String? = null,
+    val ERRCODE: String? = null,
+    val ERRMSG: String? = null
 )
 
 data class IclassLoginResult(
