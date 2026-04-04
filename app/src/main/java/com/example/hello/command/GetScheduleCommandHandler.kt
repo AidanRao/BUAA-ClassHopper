@@ -38,8 +38,13 @@ class GetScheduleCommandHandler(private val context: Context) : CommandHandler {
                         message = "Login failed: ${loginResult.getErrorMessage()}"
                     )
                 }
-                
-                val loginData = loginResult.getOrThrow().result
+
+                val loginData =
+                    loginResult.getOrThrow().result ?: return@runBlocking CommandExecutionResult(
+                        commandId = command.commandId,
+                        success = false,
+                        message = "Login failed: User not found"
+                    )
                 val dateStr = date.replace("-", "")
                 
                 when (val scheduleResult = courseRepository.getCourseSchedule(loginData.id, loginData.sessionId, dateStr)) {
