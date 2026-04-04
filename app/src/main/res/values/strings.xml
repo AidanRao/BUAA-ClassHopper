@@ -4,4 +4,6 @@
     <string name="iclass_fallback_config_name">获取课表和打卡的备选方案</string>
     <string name="app_brief_intro">和每节课前的打卡或扫码签到彻底告别，轻轻一点即可完成智慧教室签到，让你专注于真正重要的学习与研究。</string>
     <string name="app_version">Version 1.0</string>
+    <string name="splash_skip">跳过</string>
+    <string name="splash_skip_countdown">跳过 %1$ds</string>
 </resources>

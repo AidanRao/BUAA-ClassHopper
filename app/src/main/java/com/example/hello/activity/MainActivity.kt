@@ -21,9 +21,11 @@ import com.example.hello.R
 import com.example.hello.NavigationManager
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
+import dagger.hilt.android.AndroidEntryPoint
 import java.text.SimpleDateFormat
 import java.util.*
 
+@AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
     private lateinit var tableLayout: TableLayout
     private lateinit var editTextId: EditText
@@ -38,7 +40,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var scanButton: ImageButton
     private lateinit var scanLauncher: ActivityResultLauncher<ScanOptions>
     
-    // 侧边栏相关变量
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var navView: NavigationView
     private lateinit var hamburgerButton: ImageButton
@@ -144,31 +145,31 @@ class MainActivity : AppCompatActivity() {
         }
 
         // 侧边栏菜单项点击事件
-        navView.setNavigationItemSelectedListener { 
+        navView.setNavigationItemSelectedListener {
             val container = findViewById<View>(R.id.drawer_container)
             when (it.itemId) {
                 R.id.menu_home -> {
-                    // 处理首页点击
                     Toast.makeText(this, "首页", Toast.LENGTH_SHORT).show()
                     if (container != null) drawerLayout.closeDrawer(container)
                     true
                 }
                 R.id.menu_announcement -> {
-                    // 处理公告点击，跳转到公告页面
                     NavigationManager.navigate(this, "/announcement")
                     if (container != null) drawerLayout.closeDrawer(container)
                     true
                 }
+                R.id.menu_lab -> {
+                    NavigationManager.navigate(this, "/lab")
+                    if (container != null) drawerLayout.closeDrawer(container)
+                    true
+                }
                 R.id.menu_settings -> {
-                    // 处理设置点击
-                    // 获取最新用户信息
                     viewModel.fetchUserProfile()
                     NavigationManager.navigate(this, "/settings")
                     if (container != null) drawerLayout.closeDrawer(container)
                     true
                 }
                 R.id.menu_about -> {
-                    // 处理关于点击
                     NavigationManager.navigate(this, "/about")
                     if (container != null) drawerLayout.closeDrawer(container)
                     true
@@ -283,11 +284,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * 更新侧边栏用户信息（现在位于底部）
-     */
-    private fun updateDrawerHeader(userInfo: com.example.hello.service.ApiService.UserInfoResponse.UserInfoData) {
-        // 获取底部的用户信息 View
+    private fun updateDrawerHeader(userInfo: com.example.hello.data.model.dto.UserInfoDto) {
         val footerView = findViewById<View>(R.id.drawer_footer) ?: return
         
         val avatarImage = footerView.findViewById<ImageView>(R.id.avatar_image)
@@ -321,5 +318,4 @@ class MainActivity : AppCompatActivity() {
             avatarImage.setImageResource(android.R.drawable.ic_menu_gallery)
         }
     }
-
 }
