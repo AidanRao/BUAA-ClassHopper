@@ -1,5 +1,9 @@
 pluginManagement {
     repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+
         maven { setUrl("https://maven.aliyun.com/repository/public/") }
         maven { setUrl("https://maven.aliyun.com/repository/google/") }
         maven { setUrl("https://maven.aliyun.com/repository/jcenter/") }
@@ -10,14 +14,14 @@ pluginManagement {
         maven { setUrl("https://mirrors.cloud.tencent.com/nexus/repository/maven-public/") }
         // 网易镜像
         maven { setUrl("https://mirrors.163.com/maven/repository/maven-public/") }
-        google()
-        mavenCentral()
-        gradlePluginPortal()
     }
 }
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
+        google()
+        mavenCentral()
+
         maven { setUrl("https://maven.aliyun.com/repository/public/") }
         maven { setUrl("https://maven.aliyun.com/repository/google/") }
         maven { setUrl("https://maven.aliyun.com/repository/jcenter/") }
@@ -28,8 +32,6 @@ dependencyResolutionManagement {
         maven { setUrl("https://mirrors.cloud.tencent.com/nexus/repository/maven-public/") }
         // 网易镜像
         maven { setUrl("https://mirrors.163.com/maven/repository/maven-public/") }
-        google()
-        mavenCentral()
     }
 }
 
