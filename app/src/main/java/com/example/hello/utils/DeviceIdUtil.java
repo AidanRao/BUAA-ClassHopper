@@ -1,9 +1,12 @@
 package com.example.hello.utils;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
+import android.provider.Settings;
+import android.text.TextUtils;
 import android.util.Base64;
 import android.util.Log;
 
@@ -26,22 +29,36 @@ public class DeviceIdUtil {
             String encryptedId = prefs.getString(ENCRYPTED_ID_KEY, null);
 
             if (encryptedId == null) {
-                // 1. 首次运行：生成 UUID
-                String newId = UUID.randomUUID().toString();
-                // 2. 生成 KeyStore 密钥并加密
+                String deviceId = getDeviceId(context);
+                String newId = deviceId != null ? deviceId : UUID.randomUUID().toString();
                 String encrypted = encryptData(newId);
-                // 3. 存入 Prefs
                 prefs.edit().putString(ENCRYPTED_ID_KEY, encrypted).apply();
                 return newId;
             } else {
-                // 4. 非首次：尝试解密
                 return decryptData(encryptedId);
             }
         } catch (Exception e) {
             Log.e("DeviceId", "Error when get uuid " + e.getMessage());
-            // 如果 KeyStore 损坏或不支持，降级使用普通 UUID
+            String deviceId = getDeviceId(context);
+            if (!TextUtils.isEmpty(deviceId)) {
+                return deviceId;
+            }
             return UUID.randomUUID().toString();
         }
+    }
+
+    private static String getDeviceId(Context context) {
+        @SuppressLint("HardwareIds") String androidId = Settings.Secure.getString(
+                context.getContentResolver(),
+                Settings.Secure.ANDROID_ID
+        );
+        if (TextUtils.isEmpty(androidId)) {
+            return null;
+        }
+        if ("9774d56d682e549c".equals(androidId)) {
+            return null;
+        }
+        return androidId;
     }
 
     // 生成密钥并加密
