@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.hello"
+    namespace = "top.aidanrao.buaa_classhopper"
     compileSdk = 34
     
     buildFeatures {
@@ -22,7 +22,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.hello"
+        applicationId = "top.aidanrao.buaa_classhopper"
         minSdk = 28
         targetSdk = 34
         versionCode = 1
