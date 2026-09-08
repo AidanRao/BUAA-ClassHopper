@@ -5,6 +5,7 @@ on:
     branches: [ "release" ]  # The workflow is triggered only when the code is pushed to the release branch.
   pull_request:
     branches: [ "release" ]  # The workflow is triggered for pull requests targeting the release branch.
+  workflow_dispatch:  # Allows manual triggering of the workflow from the Actions tab.
  
 jobs:
   build:
