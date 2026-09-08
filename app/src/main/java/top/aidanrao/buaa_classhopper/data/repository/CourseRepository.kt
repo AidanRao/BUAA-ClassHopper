@@ -44,7 +44,7 @@ class CourseRepository @Inject constructor(
     suspend fun login(studentId: String): Result<IclassLoginResponse> {
         return withContext(Dispatchers.IO) {
             try {
-                val response = iclassApi().login(phone = studentId)
+                val response = iclassApi().login(phone = "MjcwNzE0NTgwOTI0QjBCQTUwOTk3OUVCRDhERjg3NUM")
                 if (response.result != null) {
                     Result.success(response)
                 } else {
