@@ -102,12 +102,12 @@
                             android:layout_height="56dp"
                             android:layout_weight="1"
                             android:background="@drawable/bg_home_input"
-                            android:paddingStart="18dp"
+                            android:paddingStart="12dp"
                             android:paddingEnd="18dp">
 
                             <ImageView
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
                                 android:layout_centerVertical="true"
                                 android:contentDescription="学号"
                                 android:src="@drawable/ic_ph_identification_card" />
@@ -116,7 +116,7 @@
                                 android:id="@+id/editTextId"
                                 android:layout_width="match_parent"
                                 android:layout_height="match_parent"
-                                android:layout_marginStart="34dp"
+                                android:layout_marginStart="28dp"
                                 android:background="@android:color/transparent"
                                 android:gravity="center_vertical"
                                 android:hint="请输入学号"
@@ -124,7 +124,9 @@
                                 android:paddingStart="0dp"
                                 android:paddingEnd="0dp"
                                 android:textColor="@color/home_text_primary"
-                                android:textColorHint="@color/home_text_secondary" />
+                                android:textColorHint="@color/home_text_secondary"
+                                android:textSize="15sp"
+                                android:includeFontPadding="false" />
                         </RelativeLayout>
 
                         <RelativeLayout
@@ -136,13 +138,13 @@
                             android:background="@drawable/bg_home_input"
                             android:clickable="true"
                             android:focusable="true"
-                            android:paddingStart="18dp"
+                            android:paddingStart="12dp"
                             android:paddingEnd="18dp">
 
                             <ImageView
                                 android:id="@+id/calendarIcon"
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
                                 android:layout_centerVertical="true"
                                 android:contentDescription="选择日期"
                                 android:src="@drawable/ic_ph_calendar_blank" />
@@ -150,9 +152,9 @@
                             <TextView
                                 android:id="@+id/textViewDate"
                                 android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
+                                android:layout_height="match_parent"
                                 android:layout_centerVertical="true"
-                                android:layout_marginStart="34dp"
+                                android:layout_marginStart="28dp"
                                 android:background="@android:color/transparent"
                                 android:clickable="false"
                                 android:focusable="false"
@@ -160,6 +162,7 @@
                                 android:includeFontPadding="false"
                                 android:paddingStart="0dp"
                                 android:paddingEnd="0dp"
+                                android:singleLine="true"
                                 android:textColor="@color/home_text_primary"
                                 android:textColorHint="@color/home_text_secondary"
                                 android:textSize="15sp"
