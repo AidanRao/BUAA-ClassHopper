@@ -11,7 +11,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * 持有 VPN 相关的设置：开关、SSO 学号密码、VPN session cookie。
+ * 持有两种网络模式的 SSO 状态及历史 VPN Cookie。
  * 敏感字段使用 EncryptedSharedPreferences 加密保存。
  */
 @Singleton
@@ -23,7 +23,6 @@ class VpnPreferences @Inject constructor(
         private const val PLAIN_PREFS = "course_checkin_settings"
         private const val SECURE_PREFS = "vpn_secure_prefs"
 
-        const val KEY_VPN_ENABLED = "vpn_enabled"
         private const val KEY_SSO_USERNAME = "sso_username"
         private const val KEY_SSO_PASSWORD = "sso_password"
         private const val KEY_VPN_COOKIES = "vpn_cookies"
@@ -53,9 +52,11 @@ class VpnPreferences @Inject constructor(
         }
     }
 
-    var isVpnEnabled: Boolean
-        get() = plainPrefs.getBoolean(KEY_VPN_ENABLED, false)
-        set(value) = plainPrefs.edit { putBoolean(KEY_VPN_ENABLED, value) }
+    fun isSessionReady(vpn: Boolean): Boolean = plainPrefs.getBoolean("sso_ready_$vpn", false)
+
+    fun setSessionReady(vpn: Boolean, ready: Boolean) {
+        plainPrefs.edit { putBoolean("sso_ready_$vpn", ready) }
+    }
 
     var ssoUsername: String?
         get() = securePrefs.getString(KEY_SSO_USERNAME, null)

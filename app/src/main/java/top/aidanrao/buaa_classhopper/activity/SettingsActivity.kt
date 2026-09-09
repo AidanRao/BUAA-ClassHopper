@@ -3,6 +3,7 @@ package top.aidanrao.buaa_classhopper.activity
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.graphics.Typeface
 import android.widget.Button
 import android.widget.CompoundButton
 import android.widget.ImageButton
@@ -12,11 +13,14 @@ import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.viewModels
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import top.aidanrao.buaa_classhopper.data.vpn.IclassNetworkSelector
 import top.aidanrao.buaa_classhopper.R
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.core.content.edit
 import top.aidanrao.buaa_classhopper.data.model.dto.UserInfoDto
-import top.aidanrao.buaa_classhopper.data.vpn.VpnCookieJar
 import top.aidanrao.buaa_classhopper.data.vpn.VpnPreferences
 import top.aidanrao.buaa_classhopper.viewmodel.MainViewModel
 import javax.inject.Inject
@@ -37,13 +41,15 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var infoCourseButton: ImageButton
     private lateinit var fallbackSwitch: Switch
     private lateinit var fallbackDescription: TextView
-    private lateinit var vpnSwitch: Switch
+    private lateinit var networkStatusText: TextView
+    private var networkStatusJob: Job? = null
+    private lateinit var directStatusText: TextView
     private lateinit var vpnStatusText: TextView
-    private lateinit var vpnLoginButton: Button
+    private lateinit var ssoLoginButton: Button
     private lateinit var sharedPreferences: SharedPreferences
 
+    @Inject lateinit var networkSelector: IclassNetworkSelector
     @Inject lateinit var vpnPreferences: VpnPreferences
-    @Inject lateinit var vpnCookieJar: VpnCookieJar
 
     private val viewModel: MainViewModel by viewModels()
     
@@ -59,30 +65,6 @@ class SettingsActivity : AppCompatActivity() {
                 .show()
         } else {
             saveFallbackEnabled(isChecked)
-        }
-    }
-
-    private val vpnSwitchListener: CompoundButton.OnCheckedChangeListener by lazy {
-        CompoundButton.OnCheckedChangeListener { _, isChecked ->
-            if (isChecked && !vpnCookieJar.hasVpnCookies()) {
-                AlertDialog.Builder(this)
-                    .setTitle("提示")
-                    .setMessage("启用 VPN 访问前需要先通过 SSO 登录北航 VPN")
-                    .setPositiveButton("去登录") { _, _ ->
-                        vpnSwitch.setOnCheckedChangeListener(null)
-                        vpnSwitch.isChecked = false
-                        vpnSwitch.setOnCheckedChangeListener(vpnSwitchListener)
-                        startActivity(Intent(this, VpnLoginActivity::class.java))
-                    }
-                    .setNegativeButton("取消") { _, _ ->
-                        vpnSwitch.setOnCheckedChangeListener(null)
-                        vpnSwitch.isChecked = false
-                        vpnSwitch.setOnCheckedChangeListener(vpnSwitchListener)
-                    }
-                    .show()
-            } else {
-                vpnPreferences.isVpnEnabled = isChecked
-            }
         }
     }
 
@@ -116,9 +98,10 @@ class SettingsActivity : AppCompatActivity() {
         infoCourseButton = findViewById(R.id.info_course)
         fallbackSwitch = findViewById(R.id.fallback_switch)
         fallbackDescription = findViewById(R.id.fallback_description)
-        vpnSwitch = findViewById(R.id.vpn_switch)
-        vpnStatusText = findViewById(R.id.vpn_status_text)
-        vpnLoginButton = findViewById(R.id.vpn_login_button)
+        networkStatusText = findViewById(R.id.iclass_network_status_text)
+        directStatusText = findViewById(R.id.iclass_direct_status_text)
+        vpnStatusText = findViewById(R.id.iclass_vpn_status_text)
+        ssoLoginButton = findViewById(R.id.sso_login_button)
     }
 
     private fun initListeners() {
@@ -153,11 +136,7 @@ class SettingsActivity : AppCompatActivity() {
         // Fallback实现开关点击事件
         fallbackSwitch.setOnCheckedChangeListener(fallbackSwitchListener)
 
-        // VPN 开关点击事件
-        vpnSwitch.setOnCheckedChangeListener(vpnSwitchListener)
-
-        // VPN SSO 登录按钮
-        vpnLoginButton.setOnClickListener {
+        ssoLoginButton.setOnClickListener {
             startActivity(Intent(this, VpnLoginActivity::class.java))
         }
     }
@@ -193,28 +172,43 @@ class SettingsActivity : AppCompatActivity() {
         fallbackSwitch.isClickable = true
     }
 
-    private fun refreshVpnUi() {
-        val hasCookies = vpnCookieJar.hasVpnCookies()
+    private fun refreshSsoUi(useVpn: Boolean? = null) {
+        fun updateRow(view: TextView, vpn: Boolean, savedLabel: Int, missingLabel: Int) {
+            val ready = vpnPreferences.isSessionReady(vpn)
+            val active = useVpn == vpn
+            val label = getString(if (ready) savedLabel else missingLabel)
+            view.text = if (active) getString(R.string.iclass_current_session, label) else label
+            view.setTypeface(null, if (active) Typeface.BOLD else Typeface.NORMAL)
+            view.alpha = if (useVpn != null && !active) 0.55f else 1f
+            view.setBackgroundResource(if (active) R.drawable.bg_iclass_active_session else android.R.color.transparent)
+            view.setCompoundDrawablesRelativeWithIntrinsicBounds(
+                if (ready) R.drawable.ic_status_check else R.drawable.ic_status_attention, 0, 0, 0
+            )
+        }
+        updateRow(directStatusText, false, R.string.iclass_direct_session_saved, R.string.iclass_direct_session_missing)
+        updateRow(vpnStatusText, true, R.string.iclass_vpn_session_saved, R.string.iclass_vpn_session_missing)
+    }
 
-        vpnSwitch.setOnCheckedChangeListener(null)
-        val shouldEnable = vpnPreferences.isVpnEnabled && hasCookies
-        vpnSwitch.isChecked = shouldEnable
-        // 如果 cookie 已失效，同步关闭开关
-        if (vpnPreferences.isVpnEnabled && !hasCookies) {
-            vpnPreferences.isVpnEnabled = false
+    private fun refreshNetworkStatus() {
+        networkStatusJob?.cancel()
+        refreshSsoUi()
+        networkStatusText.setText(R.string.iclass_network_checking)
+        networkStatusText.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_status_clock, 0, 0, 0)
+        networkStatusJob = lifecycleScope.launch {
+            val useVpn = networkSelector.useVpn()
+            refreshSsoUi(useVpn)
+            networkStatusText.setCompoundDrawablesRelativeWithIntrinsicBounds(
+                if (useVpn) R.drawable.ic_status_shield else R.drawable.ic_status_wifi, 0, 0, 0
+            )
+            networkStatusText.setText(
+                if (useVpn) R.string.iclass_network_off_campus else R.string.iclass_network_on_campus
+            )
         }
-        vpnSwitch.setOnCheckedChangeListener(vpnSwitchListener)
+    }
 
-        vpnStatusText.text = if (hasCookies) {
-            getString(R.string.iclass_vpn_status_logged_in)
-        } else {
-            getString(R.string.iclass_vpn_status_not_logged_in)
-        }
-        vpnLoginButton.text = if (hasCookies) {
-            getString(R.string.iclass_vpn_relogin_button)
-        } else {
-            getString(R.string.iclass_vpn_login_button)
-        }
+    override fun onPause() {
+        networkStatusJob?.cancel()
+        super.onPause()
     }
 
     override fun onResume() {
@@ -232,7 +226,7 @@ class SettingsActivity : AppCompatActivity() {
             updateFallbackSwitchAvailability(isVerified)
         }
 
-        refreshVpnUi()
+        refreshNetworkStatus()
 
         // 最后再重新获取用户信息，确保显示最新状态
         viewModel.fetchUserProfile()

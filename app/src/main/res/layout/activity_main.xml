@@ -75,7 +75,7 @@
                         android:paddingTop="8dp"
                         android:paddingEnd="14dp"
                         android:paddingBottom="8dp"
-                        android:text="学号 姓名"
+                        android:text="当前 SSO 身份"
                         android:textColor="@color/home_text_on_hero"
                         android:textSize="15sp"
                         app:layout_constraintEnd_toEndOf="parent"
@@ -98,40 +98,9 @@
                         android:orientation="horizontal">
 
                         <RelativeLayout
-                            android:layout_width="0dp"
-                            android:layout_height="56dp"
-                            android:layout_weight="1"
-                            android:background="@drawable/bg_home_input"
-                            android:paddingStart="18dp"
-                            android:paddingEnd="18dp">
-
-                            <ImageView
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
-                                android:layout_centerVertical="true"
-                                android:contentDescription="学号"
-                                android:src="@drawable/ic_ph_identification_card" />
-
-                            <EditText
-                                android:id="@+id/editTextId"
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent"
-                                android:layout_marginStart="34dp"
-                                android:background="@android:color/transparent"
-                                android:gravity="center_vertical"
-                                android:hint="请输入学号"
-                                android:inputType="textVisiblePassword"
-                                android:paddingStart="0dp"
-                                android:paddingEnd="0dp"
-                                android:textColor="@color/home_text_primary"
-                                android:textColorHint="@color/home_text_secondary" />
-                        </RelativeLayout>
-
-                        <RelativeLayout
                             android:id="@+id/datePickerContainer"
                             android:layout_width="0dp"
                             android:layout_height="56dp"
-                            android:layout_marginStart="12dp"
                             android:layout_weight="1"
                             android:background="@drawable/bg_home_input"
                             android:clickable="true"
@@ -294,7 +263,7 @@
                             android:layout_marginTop="8dp"
                             android:gravity="center"
                             android:maxWidth="260dp"
-                            android:text="你可以切换日期重新查询，或确认学号是否填写正确。"
+                            android:text="你可以切换日期重新查询，或在设置中切换 SSO 账号。"
                             android:textColor="@color/home_text_secondary"
                             android:textSize="15sp" />
                     </LinearLayout>

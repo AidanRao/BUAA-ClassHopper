@@ -4,6 +4,7 @@ import android.content.Context
 import top.aidanrao.buaa_classhopper.data.api.AnnouncementApi
 import top.aidanrao.buaa_classhopper.data.api.AuthApi
 import top.aidanrao.buaa_classhopper.data.api.FallbackApi
+import top.aidanrao.buaa_classhopper.data.api.IclassAuthApi
 import top.aidanrao.buaa_classhopper.data.api.IclassApi
 import top.aidanrao.buaa_classhopper.data.api.LabApi
 import top.aidanrao.buaa_classhopper.data.api.QRCodeApi
@@ -42,6 +43,9 @@ object NetworkModule {
     private const val FALLBACK_BASE_URL = "https://101.42.43.228/"
 
     const val CLIENT_VPN = "vpnClient"
+    const val CLIENT_ICLASS_DIRECT = "iclassDirectClient"
+    const val AUTH_ICLASS_DIRECT = "iclassAuthDirect"
+    const val AUTH_ICLASS_VPN = "iclassAuthVpn"
     const val API_ICLASS_DIRECT = "iclassDirect"
     const val API_ICLASS_VPN = "iclassVpn"
 
@@ -120,7 +124,6 @@ object NetworkModule {
     @Singleton
     @Named(CLIENT_VPN)
     fun provideVpnOkHttpClient(
-        loggingInterceptor: LoggingInterceptor,
         vpnCookieJar: VpnCookieJar,
         vpnPreferences: VpnPreferences
     ): OkHttpClient {
@@ -128,15 +131,37 @@ object NetworkModule {
             .sslSocketFactory(SslTrustManager.getUnsafeSslSocketFactory(), SslTrustManager.getUnsafeTrustManager())
             .hostnameVerifier { _, _ -> true }
             .cookieJar(vpnCookieJar)
-            .addInterceptor(VpnSessionInterceptor(vpnCookieJar, vpnPreferences))
-            .addInterceptor(loggingInterceptor)
+            .addInterceptor(VpnSessionInterceptor(true) { vpnPreferences.setSessionReady(true, false) })
             .build()
     }
 
     @Provides
     @Singleton
+    @Named(CLIENT_ICLASS_DIRECT)
+    fun provideIclassDirectClient(cookieJar: VpnCookieJar, preferences: VpnPreferences): OkHttpClient =
+        OkHttpClient.Builder()
+            .cookieJar(cookieJar)
+            .addInterceptor(VpnSessionInterceptor(false) { preferences.setSessionReady(false, false) })
+            .build()
+
+    @Provides
+    @Singleton
+    @Named(AUTH_ICLASS_DIRECT)
+    fun provideIclassDirectAuth(gson: Gson, @Named(CLIENT_ICLASS_DIRECT) client: OkHttpClient): IclassAuthApi =
+        Retrofit.Builder().baseUrl(VpnEndpoints.ICLASS_DIRECT_8346).client(client)
+            .addConverterFactory(GsonConverterFactory.create(gson)).build().create(IclassAuthApi::class.java)
+
+    @Provides
+    @Singleton
+    @Named(AUTH_ICLASS_VPN)
+    fun provideIclassVpnAuth(gson: Gson, @Named(CLIENT_VPN) client: OkHttpClient): IclassAuthApi =
+        Retrofit.Builder().baseUrl(VpnEndpoints.ICLASS_VPN_8346).client(client)
+            .addConverterFactory(GsonConverterFactory.create(gson)).build().create(IclassAuthApi::class.java)
+
+    @Provides
+    @Singleton
     @Named(API_ICLASS_DIRECT)
-    fun provideIclassApi(gson: Gson, okHttpClient: OkHttpClient): IclassApi {
+    fun provideIclassApi(gson: Gson, @Named(CLIENT_ICLASS_DIRECT) okHttpClient: OkHttpClient): IclassApi {
         return Retrofit.Builder()
             .baseUrl(ICLASS_BASE_URL)
             .client(okHttpClient)

@@ -15,15 +15,6 @@ import retrofit2.http.Query
 
 interface IclassApi {
     
-    @GET("app/user/login.action")
-    suspend fun login(
-        @Query("password") password: String = "",
-        @Query("phone") phone: String,
-        @Query("userLevel") userLevel: String = "1",
-        @Query("verificationType") verificationType: String = "2",
-        @Query("verificationUrl") verificationUrl: String = ""
-    ): IclassLoginResponse
-    
     @GET("app/course/get_stu_course_sched.action")
     suspend fun getCourseSchedule(
         @Query("dateStr") dateStr: String,

@@ -3,13 +3,17 @@ package top.aidanrao.buaa_classhopper.data.repository
 import android.content.Context
 import android.util.Log
 import top.aidanrao.buaa_classhopper.data.api.FallbackApi
+import top.aidanrao.buaa_classhopper.data.api.IclassAuthApi
 import top.aidanrao.buaa_classhopper.data.api.IclassApi
 import top.aidanrao.buaa_classhopper.data.model.Result
 import top.aidanrao.buaa_classhopper.data.model.dto.CourseDto
 import top.aidanrao.buaa_classhopper.data.model.dto.FallbackCourseDto
 import top.aidanrao.buaa_classhopper.data.model.dto.IclassLoginResponse
 import top.aidanrao.buaa_classhopper.data.vpn.VpnPreferences
-import top.aidanrao.buaa_classhopper.data.vpn.VpnSessionExpiredException
+import top.aidanrao.buaa_classhopper.data.vpn.IclassSessionExpiredException
+import top.aidanrao.buaa_classhopper.data.vpn.IclassSession
+import top.aidanrao.buaa_classhopper.data.vpn.IclassNetworkSelector
+import kotlinx.coroutines.CancellationException
 import top.aidanrao.buaa_classhopper.di.NetworkModule
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -24,37 +28,47 @@ import javax.inject.Singleton
 class CourseRepository @Inject constructor(
     @Named(NetworkModule.API_ICLASS_DIRECT) private val iclassDirectApi: IclassApi,
     @Named(NetworkModule.API_ICLASS_VPN) private val iclassVpnApi: IclassApi,
+    @Named(NetworkModule.AUTH_ICLASS_DIRECT) private val iclassDirectAuth: IclassAuthApi,
+    @Named(NetworkModule.AUTH_ICLASS_VPN) private val iclassVpnAuth: IclassAuthApi,
     private val fallbackApi: FallbackApi,
     private val tokenManager: TokenManager,
     private val vpnPreferences: VpnPreferences,
+    private val networkSelector: IclassNetworkSelector,
     @ApplicationContext private val context: Context
 ) {
     companion object {
         private const val TAG = "CourseRepository"
         private const val PREFS_NAME = "course_checkin_settings"
         private const val KEY_FALLBACK_ENABLED = "fallback_enabled"
-        const val VPN_SESSION_EXPIRED_MESSAGE = "VPN 会话已失效，请到设置中重新通过 SSO 登录"
+        const val VPN_SESSION_EXPIRED_MESSAGE = IclassSessionExpiredException.VPN_MESSAGE
+        const val DIRECT_SESSION_EXPIRED_MESSAGE = IclassSessionExpiredException.DIRECT_MESSAGE
     }
 
     private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
-    private fun iclassApi(): IclassApi =
-        if (vpnPreferences.isVpnEnabled) iclassVpnApi else iclassDirectApi
+    private fun iclassApi(vpn: Boolean): IclassApi =
+        if (vpn) iclassVpnApi else iclassDirectApi
 
-    suspend fun login(studentId: String): Result<IclassLoginResponse> {
+    suspend fun login(): Result<IclassLoginResponse> = login(networkSelector.useVpn())
+
+    private suspend fun login(vpn: Boolean): Result<IclassLoginResponse> {
         return withContext(Dispatchers.IO) {
             try {
-                val response = iclassApi().login(phone = "MjcwNzE0NTgwOTI0QjBCQTUwOTk3OUVCRDhERjg3NUM")
+                val response = IclassSession.login(if (vpn) iclassVpnAuth else iclassDirectAuth, vpn)
                 if (response.result != null) {
+                    vpnPreferences.setSessionReady(vpn, true)
                     Result.success(response)
                 } else {
                     val errorMsg = response.ERRMSG ?: "登录失败"
                     Result.error(Exception(errorMsg), errorMsg)
                 }
-            } catch (e: VpnSessionExpiredException) {
-                Result.error(e, VPN_SESSION_EXPIRED_MESSAGE)
+            } catch (e: IclassSessionExpiredException) {
+                vpnPreferences.setSessionReady(e.vpn, false)
+                Result.error(e, e.message ?: "请重新通过 SSO 登录")
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                Result.error(e, "登录失败: ${e.message}")
+                Result.error(e, "iClass 登录失败，请检查网络后重试")
             }
         }
     }
@@ -62,18 +76,22 @@ class CourseRepository @Inject constructor(
     suspend fun getCourseSchedule(
         userId: String,
         sessionId: String,
-        dateStr: String
+        dateStr: String,
+        vpn: Boolean
     ): Result<List<CourseDto>> {
         return withContext(Dispatchers.IO) {
             try {
-                val response = iclassApi().getCourseSchedule(dateStr, userId, sessionId)
+                val response = iclassApi(vpn).getCourseSchedule(dateStr, userId, sessionId)
                 if (response.status == "2" || response.result.isNullOrEmpty()) {
                     Result.success(emptyList())
                 } else {
                     Result.success(response.result)
                 }
-            } catch (e: VpnSessionExpiredException) {
-                Result.error(e, VPN_SESSION_EXPIRED_MESSAGE)
+            } catch (e: IclassSessionExpiredException) {
+                vpnPreferences.setSessionReady(e.vpn, false)
+                Result.error(e, e.message ?: "请重新通过 SSO 登录")
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 if (isFallbackEnabled()) {
                     getCourseScheduleFallback(dateStr)
@@ -105,6 +123,8 @@ class CourseRepository @Inject constructor(
                 
                 val courses = response.data.result.mapNotNull { convertFallbackCourse(it) }
                 Result.success(courses)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Fallback API failed", e)
                 Result.error(e, "Fallback接口失败: ${e.message}")
@@ -112,15 +132,16 @@ class CourseRepository @Inject constructor(
         }
     }
 
-    suspend fun signClass(studentId: String, courseId: Int): Result<Unit> {
+    suspend fun signClass(courseId: Int): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
-                val loginResult = login(studentId)
+                val vpn = networkSelector.useVpn()
+                val loginResult = login(vpn)
                 if (loginResult.isError) {
-                    // VPN 失效时直接把原始错误抛给用户，不再 fallback
+                    // SSO 失效时直接提示登录，不再 fallback
                     val cause = (loginResult as? Result.Error)?.exception
-                    if (cause is VpnSessionExpiredException) {
-                        return@withContext Result.error(cause, VPN_SESSION_EXPIRED_MESSAGE)
+                    if (cause is IclassSessionExpiredException) {
+                        return@withContext Result.error(cause, cause.message ?: "请重新通过 SSO 登录")
                     }
                     if (isFallbackEnabled()) {
                         return@withContext signClassFallback(courseId)
@@ -134,7 +155,7 @@ class CourseRepository @Inject constructor(
                 )
                 val timestamp = System.currentTimeMillis()
                 
-                val response = iclassApi().signClass(courseId, timestamp, loginData.id)
+                val response = iclassApi(vpn).signClass(courseId, timestamp, loginData.id)
                 if (response.result != null) {
                     Result.success(Unit)
                 } else {
@@ -144,8 +165,11 @@ class CourseRepository @Inject constructor(
                         Result.error(Exception(response.msg), response.msg ?: "签到失败")
                     }
                 }
-            } catch (e: VpnSessionExpiredException) {
-                Result.error(e, VPN_SESSION_EXPIRED_MESSAGE)
+            } catch (e: IclassSessionExpiredException) {
+                vpnPreferences.setSessionReady(e.vpn, false)
+                Result.error(e, e.message ?: "请重新通过 SSO 登录")
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 if (isFallbackEnabled()) {
                     signClassFallback(courseId)
@@ -170,6 +194,8 @@ class CourseRepository @Inject constructor(
                 } else {
                     Result.error(Exception("HTTP ${response.code()}"), "签到失败: ${response.code()}")
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Fallback sign failed", e)
                 Result.error(e, "Fallback签到失败: ${e.message}")

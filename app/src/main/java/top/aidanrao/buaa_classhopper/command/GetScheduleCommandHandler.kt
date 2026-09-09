@@ -15,14 +15,13 @@ class GetScheduleCommandHandler(private val context: Context) : CommandHandler {
 
     override fun execute(command: CommandDTO): CommandExecutionResult {
         // 验证参数
-        val studentId = command.params?.get("studentId") as? String
         val date = command.params?.get("date") as? String
         
-        if (studentId.isNullOrEmpty() || date.isNullOrEmpty()) {
+        if (date.isNullOrEmpty()) {
             return CommandExecutionResult(
                 commandId = command.commandId,
                 success = false,
-                message = "Missing required parameters: studentId or date"
+                message = "Missing required parameters: date"
             )
         }
 
@@ -30,7 +29,7 @@ class GetScheduleCommandHandler(private val context: Context) : CommandHandler {
             try {
                 val courseRepository = getCourseRepository()
                 
-                val loginResult = courseRepository.login(studentId)
+                val loginResult = courseRepository.login()
                 if (loginResult.isError) {
                     return@runBlocking CommandExecutionResult(
                         commandId = command.commandId,
@@ -47,7 +46,7 @@ class GetScheduleCommandHandler(private val context: Context) : CommandHandler {
                     )
                 val dateStr = date.replace("-", "")
                 
-                when (val scheduleResult = courseRepository.getCourseSchedule(loginData.id, loginData.sessionId, dateStr)) {
+                when (val scheduleResult = courseRepository.getCourseSchedule(loginData.id, loginData.sessionId, dateStr, loginData.vpnMode)) {
                     is Result.Success -> {
                         val courses = scheduleResult.data
                         CommandExecutionResult(

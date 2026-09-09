@@ -111,9 +111,9 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun getClassInfo(studentId: String, date: String) {
-        if (studentId.isEmpty() || date.isEmpty()) {
-            _toastMessage.postValue("请输入学号和日期")
+    fun getClassInfo(date: String) {
+        if (date.isEmpty()) {
+            _toastMessage.postValue("请选择日期")
             return
         }
 
@@ -127,14 +127,14 @@ class MainViewModel @Inject constructor(
         _isEmpty.postValue(false)
 
         viewModelScope.launch {
-            when (val loginResult = courseRepository.login(studentId)) {
+            when (val loginResult = courseRepository.login()) {
                 is Result.Success -> {
                     val loginData = loginResult.data.result
                     if (loginData != null) {
                         _userInfo.postValue("${loginData.realName} - ${loginData.academyName}")
                         
                         val dateStr = date.replace("-", "")
-                        fetchCourseSchedule(loginData.id, loginData.sessionId, dateStr)
+                        fetchCourseSchedule(loginData.id, loginData.sessionId, dateStr, loginData.vpnMode)
                     } else {
                         _isLoading.postValue(false)
                         _error.postValue(loginResult.data.ERRMSG ?: "登录失败")
@@ -142,7 +142,8 @@ class MainViewModel @Inject constructor(
                     }
                 }
                 is Result.Error -> {
-                    if (courseRepository.isFallbackEnabledPublic() && authRepository.getValidToken() != null) {
+                    if (loginResult.exception !is top.aidanrao.buaa_classhopper.data.vpn.IclassSessionExpiredException &&
+                        courseRepository.isFallbackEnabledPublic() && authRepository.getValidToken() != null) {
                         val dateStr = date.replace("-", "")
                         fetchCourseScheduleFallback(dateStr)
                     } else {
@@ -156,8 +157,8 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    private suspend fun fetchCourseSchedule(userId: String, sessionId: String, dateStr: String) {
-        when (val result = courseRepository.getCourseSchedule(userId, sessionId, dateStr)) {
+    private suspend fun fetchCourseSchedule(userId: String, sessionId: String, dateStr: String, vpn: Boolean) {
+        when (val result = courseRepository.getCourseSchedule(userId, sessionId, dateStr, vpn)) {
             is Result.Success -> {
                 _isLoading.postValue(false)
                 val courseList = result.data
@@ -198,12 +199,12 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun signClass(studentId: String, courseId: Int, date: String) {
+    fun signClass(courseId: Int, date: String) {
         viewModelScope.launch {
-            when (val result = courseRepository.signClass(studentId, courseId)) {
+            when (val result = courseRepository.signClass(courseId)) {
                 is Result.Success -> {
                     _toastMessage.postValue("签到成功")
-                    getClassInfo(studentId, date)
+                    getClassInfo(date)
                 }
                 is Result.Error -> {
                     _error.postValue(result.getErrorMessage() ?: "签到失败")
