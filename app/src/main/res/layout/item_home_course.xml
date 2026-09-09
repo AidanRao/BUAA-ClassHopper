@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="8dp"
+    android:background="@drawable/home_course_background"
+    android:minHeight="80dp"
+    android:padding="10dp">
+    <ImageView
+        android:id="@+id/courseIcon"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:background="@drawable/home_icon_circle"
+        android:padding="10dp"
+        android:src="@drawable/home_ic_cap"
+        android:importantForAccessibility="no"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/courseName"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="8dp"
+        android:textColor="@color/homepage_text"
+        android:textSize="16sp"
+        android:fontFamily="sans-serif-medium"
+        app:layout_constraintStart_toEndOf="@id/courseIcon"
+        app:layout_constraintEnd_toStartOf="@id/courseSign"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="软件开发方法" />
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/courseSign"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:minWidth="76dp"
+        android:minHeight="48dp"
+        android:background="@drawable/home_sign_background"
+        app:backgroundTint="@null"
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="8dp"
+        android:text="@string/home_sign"
+        android:textAllCaps="false"
+        android:textColor="@color/homepage_blue"
+        android:textSize="12sp"
+        android:drawablePadding="5dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <LinearLayout
+        android:id="@+id/courseMetadata"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="6dp"
+        android:orientation="horizontal"
+        app:layout_constraintStart_toEndOf="@id/courseIcon"
+        app:layout_constraintEnd_toStartOf="@id/courseSign"
+        app:layout_constraintTop_toBottomOf="@id/courseName"
+        app:layout_constraintBottom_toBottomOf="parent">
+        <TextView
+            android:id="@+id/courseTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:drawableStart="@drawable/home_ic_clock"
+            android:drawablePadding="4dp"
+            android:gravity="center_vertical"
+            android:textColor="@color/homepage_secondary"
+            android:textSize="12sp"
+            tools:text="15:50 - 18:15" />
+
+        <TextView
+            android:id="@+id/courseRoom"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="10dp"
+            android:drawableStart="@drawable/home_ic_location"
+            android:drawablePadding="4dp"
+            android:gravity="center_vertical"
+            android:textColor="@color/homepage_secondary"
+            android:textSize="12sp"
+            tools:text="(三)304" />
+    </LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

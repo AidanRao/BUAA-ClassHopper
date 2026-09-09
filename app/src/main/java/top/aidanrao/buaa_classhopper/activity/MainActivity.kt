@@ -7,6 +7,8 @@ import android.view.View
 import android.widget.*
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.SystemBarStyle
+import androidx.core.view.isVisible
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -23,20 +25,18 @@ import top.aidanrao.buaa_classhopper.NavigationManager
 import top.aidanrao.buaa_classhopper.R
 import top.aidanrao.buaa_classhopper.data.model.dto.UserInfoDto
 import top.aidanrao.buaa_classhopper.data.repository.CourseRepository
-import top.aidanrao.buaa_classhopper.ui.CourseTableRenderer
+import top.aidanrao.buaa_classhopper.ui.HomeContentRenderer
+import top.aidanrao.buaa_classhopper.ui.HomeCourseState
 import top.aidanrao.buaa_classhopper.viewmodel.MainViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
-    private lateinit var tableLayout: TableLayout
     private lateinit var textViewDate: TextView
-    private lateinit var datePickerContainer: RelativeLayout
-    private lateinit var calendarIcon: ImageView
-    private lateinit var emptyStateLayout: LinearLayout
+    private lateinit var datePickerContainer: LinearLayout
     private lateinit var userInfoTextView: TextView
-    private lateinit var courseTableRenderer: CourseTableRenderer
+    private lateinit var homeContentRenderer: HomeContentRenderer
     private lateinit var scanButton: ImageButton
     private lateinit var scanLauncher: ActivityResultLauncher<ScanOptions>
     
@@ -47,8 +47,12 @@ class MainActivity : AppCompatActivity() {
     private val viewModel: MainViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        setTheme(R.style.Theme_ClassHopper_Home)
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+        )
         setContentView(R.layout.activity_main)
         scanLauncher = registerForActivityResult(ScanContract()) { result ->
             val contents = result.contents
@@ -71,41 +75,22 @@ class MainActivity : AppCompatActivity() {
         // 获取用户信息
         viewModel.fetchUserProfile()
         
-        userInfoTextView.text = "当前 SSO 身份"
-
-        // 设置默认日期
-        val currentDate = Calendar.getInstance()
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        textViewDate.text = dateFormat.format(currentDate.time)
-        
-        viewModel.getClassInfo(textViewDate.text.toString())
+        textViewDate.text = viewModel.selectedDate
+        updateDateAccessibility()
+        if (viewModel.courseState.value == null) viewModel.getClassInfo(viewModel.selectedDate)
     }
 
     private fun initViews() {
-        tableLayout = findViewById(R.id.tableLayout)
         textViewDate = findViewById(R.id.textViewDate)
         datePickerContainer = findViewById(R.id.datePickerContainer)
-        calendarIcon = findViewById(R.id.calendarIcon)
-        emptyStateLayout = findViewById(R.id.emptyStateLayout)
         userInfoTextView = findViewById(R.id.userInfoTextView)
         hamburgerButton = findViewById(R.id.hamburger_button)
         drawerLayout = findViewById(R.id.drawer_layout)
         navView = findViewById(R.id.nav_view)
         scanButton = findViewById(R.id.scanButton)
 
-        courseTableRenderer = CourseTableRenderer(
-            context = this,
-            tableLayout = tableLayout,
-            onSignClick = { courseId ->
-                viewModel.signClass(
-                    courseId,
-                    textViewDate.text.toString()
-                )
-            }
-        )
-
+        homeContentRenderer = HomeContentRenderer(findViewById(R.id.content_layout)) { courseId -> viewModel.signClass(courseId) }
         datePickerContainer.setOnClickListener { showDatePickerDialog() }
-        calendarIcon.setOnClickListener { showDatePickerDialog() }
 
         findViewById<Button>(R.id.btnGetClass).setOnClickListener {
             viewModel.getClassInfo(textViewDate.text.toString())
@@ -166,17 +151,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initObservers() {
-        viewModel.courses.observe(this) { courses ->
-            hideEmptyState()
-            courseTableRenderer.render(courses)
+        viewModel.courseState.observe(this) { state -> renderCourseState(state) }
+        viewModel.signingIds.observe(this) {
+            (viewModel.courseState.value as? HomeCourseState.Success)?.let { state ->
+                renderCourseState(state)
+            }
         }
-
         viewModel.userInfo.observe(this) { info ->
-            userInfoTextView.text = info
-        }
-
-        viewModel.isEmpty.observe(this) { isEmpty ->
-            if (isEmpty) showEmptyState() else hideEmptyState()
+            userInfoTextView.text = info.title
+            userInfoTextView.isVisible = info.title.isNotBlank()
+            findViewById<TextView>(R.id.academyTextView).apply {
+                text = info.academy
+                isVisible = !info.academy.isNullOrBlank()
+            }
         }
 
         viewModel.error.observe(this) { errorMsg ->
@@ -198,17 +185,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onStart() {
-        super.onStart()
+    private fun renderCourseState(state: HomeCourseState) {
+        homeContentRenderer.render(state, viewModel.signingIds.value.orEmpty())
     }
 
-    override fun onStop() {
-        super.onStop()
-    }
-    
-    private fun showEmptyState() {
-        tableLayout.visibility = View.GONE
-        emptyStateLayout.visibility = View.VISIBLE
+    private fun updateDateAccessibility() {
+        datePickerContainer.contentDescription = "${getString(R.string.home_choose_date)}，${textViewDate.text}"
     }
 
     private var vpnExpiredDialogShown = false
@@ -226,11 +208,6 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton("取消", null)
             .setOnDismissListener { vpnExpiredDialogShown = false }
             .show()
-    }
-
-    private fun hideEmptyState() {
-        tableLayout.visibility = View.VISIBLE
-        emptyStateLayout.visibility = View.GONE
     }
 
     private fun showDatePickerDialog() {
@@ -256,6 +233,7 @@ class MainActivity : AppCompatActivity() {
             val formattedDay = String.format(Locale.getDefault(), "%02d", selectedDayOfMonth)
             val formattedDate = "$selectedYear-$formattedMonth-$formattedDay"
             textViewDate.text = formattedDate
+            updateDateAccessibility()
             
             // 自动加载
             viewModel.getClassInfo(formattedDate)

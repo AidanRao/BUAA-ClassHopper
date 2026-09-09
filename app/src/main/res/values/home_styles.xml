@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="homepage_background">#F3F8FF</color>
+
+    <color name="homepage_text">#132650</color>
+
+    <color name="homepage_secondary">#697791</color>
+
+    <color name="homepage_blue">#327AFF</color>
+
+    <color name="homepage_green">#32AD70</color>
+
+    <style name="Theme.ClassHopper.Home" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">@color/homepage_blue</item>
+
+        <item name="colorOnPrimary">#FFFFFF</item>
+
+        <item name="colorSurface">#FFFFFF</item>
+
+        <item name="colorOnSurface">@color/homepage_text</item>
+
+        <item name="android:windowLightStatusBar">true</item>
+
+        <item name="android:windowLightNavigationBar">true</item>
+
+        <item name="android:windowBackground">@color/homepage_background</item>
+
+        <item name="android:forceDarkAllowed">false</item>
+    </style>
+
+    <style name="Home.SectionTitle" parent="">
+        <item name="android:layout_width">wrap_content</item>
+
+        <item name="android:layout_height">wrap_content</item>
+
+        <item name="android:textColor">@color/homepage_text</item>
+
+        <item name="android:textSize">17sp</item>
+
+        <item name="android:fontFamily">sans-serif-medium</item>
+
+        <item name="android:layout_marginStart">10dp</item>
+    </style>
+</resources>
