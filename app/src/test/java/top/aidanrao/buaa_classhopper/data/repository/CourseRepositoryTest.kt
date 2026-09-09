@@ -17,6 +17,39 @@ import top.aidanrao.buaa_classhopper.data.model.dto.*
 import top.aidanrao.buaa_classhopper.data.vpn.*
 
 class CourseRepositoryTest {
+    @Test fun rejectedStoredTokenInvalidatesSessionWithoutFallback() = runBlocking {
+        val preferences = mock(VpnPreferences::class.java)
+        `when`(preferences.getLoginName(false)).thenReturn("expired-token")
+        val auth = mock(IclassAuthApi::class.java)
+        `when`(auth.login("expired-token")).thenReturn(IclassLoginResponse(ERRMSG = "expired"))
+        val fallback = mock(FallbackApi::class.java)
+        val repo = repository(preferences, mock(IclassNetworkSelector::class.java), auth, Auth(true),
+            Business(), Business(), fallback)
+        assertTrue(repo.login(false) is Result.Error)
+        verify(preferences).setSessionReady(false, false)
+        verify(preferences, never()).saveLoginName(false, "expired-token")
+        verifyNoInteractions(fallback)
+    }
+
+    @Test fun callbackAndStoredTokenBothBypassJumpAndRemainRouteScoped() = runBlocking {
+        for (vpn in listOf(false, true)) {
+            val preferences = mock(VpnPreferences::class.java)
+            val selector = mock(IclassNetworkSelector::class.java)
+            `when`(selector.useVpn()).thenReturn(vpn)
+            val directAuth = Auth(false, onJump = { fail("Must use handed-off or stored token") })
+            val vpnAuth = Auth(true, onJump = { fail("Must use handed-off or stored token") })
+            val repo = repository(preferences, selector, directAuth, vpnAuth,
+                Business(), Business(), mock(FallbackApi::class.java))
+            assertTrue(repo.login(vpn, "callback-token") is Result.Success)
+            verify(preferences).saveLoginName(vpn, "callback-token")
+            `when`(preferences.getLoginName(vpn)).thenReturn("callback-token")
+            assertTrue(repo.login() is Result.Success)
+            verify(preferences, times(2)).saveLoginName(vpn, "callback-token")
+            verify(preferences, never()).getLoginName(!vpn)
+            verify(preferences, never()).saveLoginName(!vpn, "callback-token")
+        }
+    }
+
     private class Auth(private val vpn: Boolean, private val error: Exception? = null, private val onJump: () -> Unit = {}) : IclassAuthApi {
         override suspend fun jumpMyCenter(type: String): Response<ResponseBody> {
             error?.let { throw it }

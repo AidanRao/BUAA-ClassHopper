@@ -16,6 +16,40 @@ import top.aidanrao.buaa_classhopper.data.api.IclassAuthApi
 import java.io.IOException
 
 class IclassSessionTest {
+    @Test fun callbackTokenLogsInWithoutRequestingAnotherJumpAndIsRetainedAfterValidation() = runBlocking {
+        for (vpn in listOf(false, true)) {
+            MockWebServer().use { server ->
+                val token = "AB+/C=="
+                server.enqueue(user("api-session"))
+                server.enqueue(user("next-api-session"))
+                var retained: String? = null
+                val auth = api(server, OkHttpClient())
+                val first = IclassSession.login(auth, vpn, server.url("/"), token) { retained = it }
+                assertEquals(token, retained)
+                assertEquals("api-session", first.result!!.sessionId)
+                val next = IclassSession.login(auth, vpn, server.url("/"), retained)
+                assertEquals("next-api-session", next.result!!.sessionId)
+                repeat(2) {
+                    val request = server.takeRequest()
+                    assertEquals("/eschool/app/user/login_buaa.do", request.requestUrl!!.encodedPath)
+                    assertEquals(token, request.requestUrl!!.queryParameter("phone"))
+                }
+                assertEquals(2, server.requestCount)
+            }
+        }
+    }
+
+    @Test fun rejectedCallbackTokenIsNotRetained() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setBody("""{"ERRMSG":"denied"}"""))
+            val response = IclassSession.login(api(server, OkHttpClient()), false, server.url("/"), "invalid") {
+                fail("Rejected token must not be retained")
+            }
+            assertNull(response.result)
+            assertEquals(1, server.requestCount)
+        }
+    }
+
     private fun api(server: MockWebServer, client: OkHttpClient, path: String = "/") =
         Retrofit.Builder().baseUrl(server.url(path)).client(client)
             .addConverterFactory(GsonConverterFactory.create()).build().create(IclassAuthApi::class.java)
@@ -86,7 +120,12 @@ class IclassSessionTest {
                 try {
                     IclassSession.login(api(server, client), true, server.url("/"))
                     fail("Expected session failure")
-                } catch (e: IclassSessionExpiredException) { assertTrue(e.vpn) }
+                } catch (e: IclassSessionExpiredException) {
+                    assertTrue(e.vpn)
+                    assertTrue(e.diagnostic!!.contains("stage=jumpMyCenter"))
+                    assertFalse(e.diagnostic!!.contains("untrusted"))
+                    assertFalse(e.diagnostic!!.contains("loginName="))
+                }
                 assertTrue(expired)
                 assertEquals(2, server.requestCount)
             }

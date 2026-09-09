@@ -2,6 +2,7 @@ package top.aidanrao.buaa_classhopper.activity
 
 import android.annotation.SuppressLint
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
@@ -20,17 +21,21 @@ import dagger.hilt.android.AndroidEntryPoint
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import top.aidanrao.buaa_classhopper.R
 import top.aidanrao.buaa_classhopper.data.vpn.IclassSession
+import top.aidanrao.buaa_classhopper.data.vpn.IclassSessionExpiredException
 import top.aidanrao.buaa_classhopper.data.vpn.VpnCookieJar
 import top.aidanrao.buaa_classhopper.data.vpn.VpnEndpoints
 import top.aidanrao.buaa_classhopper.data.vpn.VpnPreferences
+import top.aidanrao.buaa_classhopper.data.repository.CourseRepository
+import top.aidanrao.buaa_classhopper.data.model.Result
 import javax.inject.Inject
 
-/** Interactive SSO only; iClass API login obtains a fresh loginName for each operation. */
+/** Hand the trusted CAS callback to API login before reporting authentication success. */
 @AndroidEntryPoint
 class VpnLoginActivity : AppCompatActivity() {
     @Inject lateinit var networkSelector: IclassNetworkSelector
     @Inject lateinit var vpnPreferences: VpnPreferences
     @Inject lateinit var vpnCookieJar: VpnCookieJar
+    @Inject lateinit var courseRepository: CourseRepository
     private lateinit var webView: WebView
     private lateinit var progressBar: ProgressBar
     private lateinit var statusText: TextView
@@ -53,7 +58,7 @@ class VpnLoginActivity : AppCompatActivity() {
         statusText.text = "正在检测校园网访问路径…"
         findViewById<ImageView>(R.id.back_button).setOnClickListener { finish() }
         findViewById<Button>(R.id.clear_button).setOnClickListener {
-            if (routeReady && !clearing) {
+            if (routeReady && !clearing && !loginHandled) {
                 clearing = true
                 loginHandled = false
                 portalForwarded = false
@@ -90,10 +95,28 @@ class VpnLoginActivity : AppCompatActivity() {
                     loginHandled = true
                     CookieManager.getInstance().flush()
                     if (vpn) vpnCookieJar.persistCookies()
-                    vpnPreferences.setSessionReady(vpn, true)
-                    Toast.makeText(this@VpnLoginActivity, "$modeLabel SSO 登录成功", Toast.LENGTH_SHORT).show()
-                    setResult(RESULT_OK)
-                    finish()
+                    statusText.text = "网页认证完成，正在验证$modeLabel iClass 会话…"
+                    lifecycleScope.launch {
+                        // Reopening the jump page can omit the token after CAS has authenticated.
+                        // Validate this callback token with the API, then retain it for later logins.
+                        when (val result = courseRepository.login(vpn, IclassSession.loginName(current))) {
+                            is Result.Success -> {
+                                Toast.makeText(this@VpnLoginActivity, "$modeLabel SSO 登录成功", Toast.LENGTH_SHORT).show()
+                                setResult(RESULT_OK)
+                                finish()
+                            }
+                            is Result.Error -> {
+                                val expired = result.exception as? IclassSessionExpiredException
+                                if (expired != null) {
+                                    Log.w("VpnLoginActivity", "iClass session rejected: ${expired.diagnostic ?: "missing loginName"}")
+                                }
+                                vpnPreferences.setSessionReady(vpn, false)
+                                statusText.text = "网页认证已完成，但应用会话验证失败：${result.getErrorMessage()}"
+                                loginHandled = false
+                            }
+                            Result.Loading -> { loginHandled = false }
+                        }
+                    }
                 } else if (vpn && !portalForwarded && IclassSession.isVpnPortal(current)) {
                     portalForwarded = true
                     // The VPN portal alone does not establish an iClass session.

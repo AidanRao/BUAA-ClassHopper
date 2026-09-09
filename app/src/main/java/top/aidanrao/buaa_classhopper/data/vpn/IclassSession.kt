@@ -9,7 +9,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import top.aidanrao.buaa_classhopper.data.api.IclassAuthApi
 import top.aidanrao.buaa_classhopper.data.model.dto.IclassLoginResponse
 
-open class IclassSessionExpiredException(val vpn: Boolean) : IOException(messageFor(vpn)) {
+open class IclassSessionExpiredException(val vpn: Boolean, val diagnostic: String? = null) : IOException(messageFor(vpn)) {
     companion object {
         const val DIRECT_MESSAGE = "直连 SSO 未登录或会话已失效，请到设置中重新登录"
         const val VPN_MESSAGE = "VPN SSO 未登录或会话已失效，请到设置中重新登录"
@@ -42,8 +42,15 @@ object IclassSession {
         ?.let { runCatching { URLDecoder.decode(it.replace("+", "%2B"), "UTF-8") }.getOrNull() }
         ?.takeIf { it.isNotBlank() }
 
-    suspend fun login(api: IclassAuthApi, vpn: Boolean, base: HttpUrl = baseUrl(vpn)): IclassLoginResponse {
-        val name = atLoginStage(IclassLoginFailure.JUMP, vpn) {
+    suspend fun login(
+        api: IclassAuthApi,
+        vpn: Boolean,
+        base: HttpUrl = baseUrl(vpn),
+        suppliedLoginName: String? = null,
+        onAuthenticated: (String) -> Unit = {}
+    ): IclassLoginResponse {
+        // CAS adds loginName on the initial callback, not on every authenticated page load.
+        val name = suppliedLoginName?.takeIf { it.isNotBlank() } ?: atLoginStage(IclassLoginFailure.JUMP, vpn) {
             val jump = api.jumpMyCenter()
             try {
                 if (!jump.isSuccessful) throw HttpException(jump)
@@ -59,10 +66,12 @@ object IclassSession {
             val response = api.login(name)
             val user = response.result ?: return@atLoginStage response
             if (user.id.isNullOrBlank()) throw InvalidIclassLoginResponse("登录响应缺少用户标识 id")
-            response.copy(result = user.copy(
+            val authenticated = response.copy(result = user.copy(
                 sessionId = user.sessionId.takeUnless { it.isNullOrBlank() } ?: name,
                 vpnMode = vpn
             ))
+            onAuthenticated(name)
+            authenticated
         }
     }
 

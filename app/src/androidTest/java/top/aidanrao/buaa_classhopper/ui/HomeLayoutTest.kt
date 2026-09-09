@@ -6,6 +6,7 @@ import android.graphics.Canvas
 import android.view.ContextThemeWrapper
 import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -39,6 +40,7 @@ class HomeLayoutTest {
         }
         val context = ContextThemeWrapper(base.createConfigurationContext(config), R.style.Theme_ClassHopper_Home)
         return LayoutInflater.from(context).inflate(R.layout.activity_main, null).apply {
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
             findViewById<TextView>(R.id.userInfoTextView).apply { text = "饶晨煜 - ZY2623327"; visibility = View.VISIBLE }
             findViewById<TextView>(R.id.academyTextView).apply { text = "国家卓越工程师学院"; visibility = View.VISIBLE }
             findViewById<TextView>(R.id.textViewDate).text = "2026-09-09"
@@ -49,7 +51,12 @@ class HomeLayoutTest {
         val density = root.resources.displayMetrics.density
         val width = (widthDp * density).roundToInt()
         val height = (844 * density).roundToInt()
+        fun forceLayout(view: View) {
+            view.forceLayout()
+            if (view is ViewGroup) for (i in 0 until view.childCount) forceLayout(view.getChildAt(i))
+        }
         repeat(3) {
+            forceLayout(root)
             root.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
             root.layout(0, 0, width, height)
         }

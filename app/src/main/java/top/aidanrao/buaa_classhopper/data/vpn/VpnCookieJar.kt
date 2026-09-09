@@ -25,6 +25,9 @@ class VpnCookieJar @Inject constructor(
 
     companion object {
         private const val TAG = "VpnCookieJar"
+        private val SESSION_HOSTS = setOf(
+            VpnEndpoints.VPN_HOST, "iclass.buaa.edu.cn", "sso.buaa.edu.cn", "uc.buaa.edu.cn"
+        )
     }
 
     init {
@@ -33,7 +36,7 @@ class VpnCookieJar @Inject constructor(
     }
 
     override fun loadForRequest(url: HttpUrl): List<Cookie> {
-        if (url.host !in setOf(VpnEndpoints.VPN_HOST, "iclass.buaa.edu.cn", "sso.buaa.edu.cn")) return emptyList()
+        if (url.host !in SESSION_HOSTS) return emptyList()
         val cookieHeader = CookieManager.getInstance().getCookie(url.toString()) ?: return emptyList()
         val cookies = mutableListOf<Cookie>()
         cookieHeader.split(";").forEach { raw ->
@@ -46,7 +49,7 @@ class VpnCookieJar @Inject constructor(
     }
 
     override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
-        if (url.host !in setOf(VpnEndpoints.VPN_HOST, "iclass.buaa.edu.cn", "sso.buaa.edu.cn")) return
+        if (url.host !in SESSION_HOSTS) return
         val manager = CookieManager.getInstance()
         cookies.forEach { cookie ->
             try {
@@ -92,6 +95,7 @@ class VpnCookieJar @Inject constructor(
             "https://${VpnEndpoints.VPN_HOST}/", VpnEndpoints.VPN_CAS_LOGIN_URL,
             VpnEndpoints.ICLASS_VPN_8346, VpnEndpoints.ICLASS_VPN_8347
         ) else listOf("https://sso.buaa.edu.cn/login", "https://sso.buaa.edu.cn/",
+            "https://uc.buaa.edu.cn/",
             VpnEndpoints.ICLASS_DIRECT_8346, VpnEndpoints.ICLASS_DIRECT_8347)
         val removals = mutableSetOf<Pair<String, String>>()
         urls.forEach { address ->

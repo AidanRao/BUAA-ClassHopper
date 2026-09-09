@@ -20,7 +20,11 @@ class VpnSessionInterceptor(
         if (response.code in listOf(401, 403) || (jump && response.isSuccessful && !validLanding) || (!jump && html && response.isSuccessful)) {
             response.close()
             onExpired()
-            throw IclassSessionExpiredException(vpn)
+            val final = response.request.url
+            throw IclassSessionExpiredException(vpn,
+                "stage=${if (jump) "jumpMyCenter" else "api"}, status=${response.code}, " +
+                    "host=${final.host}, port=${final.port}, path=${final.encodedPath}, " +
+                    "html=$html, validLanding=$validLanding")
         }
         return response
     }

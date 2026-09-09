@@ -52,14 +52,19 @@ class CourseRepository @Inject constructor(
 
     suspend fun login(): Result<IclassLoginResponse> = login(networkSelector.useVpn())
 
-    private suspend fun login(vpn: Boolean): Result<IclassLoginResponse> {
+    suspend fun login(vpn: Boolean, loginName: String? = null): Result<IclassLoginResponse> {
         return withContext(Dispatchers.IO) {
             try {
-                val response = IclassSession.login(if (vpn) iclassVpnAuth else iclassDirectAuth, vpn)
+                val response = IclassSession.login(
+                    if (vpn) iclassVpnAuth else iclassDirectAuth, vpn,
+                    suppliedLoginName = loginName ?: vpnPreferences.getLoginName(vpn),
+                    onAuthenticated = { vpnPreferences.saveLoginName(vpn, it) }
+                )
                 if (response.result != null) {
                     vpnPreferences.setSessionReady(vpn, true)
                     Result.success(response)
                 } else {
+                    vpnPreferences.setSessionReady(vpn, false)
                     val error = IclassLoginFailure.rejected(response, vpn)
                     Result.error(error, error.message)
                 }

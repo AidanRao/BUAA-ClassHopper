@@ -15,15 +15,12 @@ class SignCourseCommandHandler(private val context: Context) : CommandHandler {
 
     override fun execute(command: CommandDTO): CommandExecutionResult {
         // 验证参数
-        val courseScheduleId = command.params?.get("courseScheduleId")
-        
-        if (courseScheduleId == null) {
-            return CommandExecutionResult(
+        val courseScheduleId =
+            command.params?.get("courseScheduleId") ?: return CommandExecutionResult(
                 commandId = command.commandId,
                 success = false,
                 message = "Missing required parameters: courseScheduleId"
             )
-        }
 
         // 转换courseScheduleId为Int
         val courseId = when (courseScheduleId) {

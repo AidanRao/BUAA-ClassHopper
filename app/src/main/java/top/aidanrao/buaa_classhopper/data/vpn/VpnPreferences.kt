@@ -33,6 +33,22 @@ class VpnPreferences @Inject constructor(
 
     private val securePrefs: SharedPreferences by lazy { createSecurePrefs() }
 
+    // Login tokens must never use the legacy plaintext fallback.
+    private val iclassSessionPrefs: SharedPreferences by lazy {
+        val key = MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
+        EncryptedSharedPreferences.create(
+            context, "iclass_session_prefs", key,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }
+
+    fun getLoginName(vpn: Boolean): String? = iclassSessionPrefs.getString("login_name_$vpn", null)
+
+    fun saveLoginName(vpn: Boolean, loginName: String) {
+        iclassSessionPrefs.edit { putString("login_name_$vpn", loginName) }
+    }
+
     private fun createSecurePrefs(): SharedPreferences {
         return try {
             val masterKey = MasterKey.Builder(context)
@@ -55,6 +71,7 @@ class VpnPreferences @Inject constructor(
     fun isSessionReady(vpn: Boolean): Boolean = plainPrefs.getBoolean("sso_ready_$vpn", false)
 
     fun setSessionReady(vpn: Boolean, ready: Boolean) {
+        if (!ready) iclassSessionPrefs.edit { remove("login_name_$vpn") }
         plainPrefs.edit { putBoolean("sso_ready_$vpn", ready) }
     }
 

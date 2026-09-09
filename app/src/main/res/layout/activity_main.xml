@@ -24,13 +24,26 @@
                 android:orientation="vertical"
                 android:paddingBottom="24dp">
                 <FrameLayout android:layout_width="match_parent" android:layout_height="wrap_content">
-                    <ImageView
-                        android:id="@+id/headerArtwork"
+                    <FrameLayout
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:src="@drawable/home_header_art"
-                        android:scaleType="centerCrop"
-                        android:importantForAccessibility="no" />
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="bottom">
+                        <ImageView
+                            android:id="@+id/headerArtwork"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:src="@drawable/home_header_art"
+                            android:scaleType="fitEnd"
+                            android:importantForAccessibility="no"
+                            android:adjustViewBounds="true" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="24dp"
+                            android:layout_gravity="top"
+                            android:background="@drawable/home_header_top_fade"
+                            android:importantForAccessibility="no" />
+                    </FrameLayout>
 
                     <View
                         android:layout_width="match_parent"
@@ -58,7 +71,7 @@
                                 android:padding="13dp"
                                 android:contentDescription="@string/home_open_menu"
                                 android:src="@drawable/ic_ph_list"
-                                app:tint="@color/homepage_blue" />
+                                android:tint="@color/homepage_blue" />
 
                             <Space
                                 android:layout_width="0dp"
@@ -73,7 +86,7 @@
                                 android:padding="12dp"
                                 android:contentDescription="@string/home_scan"
                                 android:src="@drawable/ic_ph_qr_code"
-                                app:tint="@color/homepage_blue" />
+                                android:tint="@color/homepage_blue" />
                         </LinearLayout>
 
                         <FrameLayout
@@ -129,7 +142,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:src="@drawable/ic_ph_calendar_blank"
-                            app:tint="@color/homepage_blue"
+                            android:tint="@color/homepage_blue"
                             android:importantForAccessibility="no" />
 
                         <TextView style="@style/Home.SectionTitle" android:text="@string/home_choose_date" />
@@ -151,7 +164,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:src="@drawable/ic_ph_calendar_blank"
-                            app:tint="@color/homepage_blue"
+                            android:tint="@color/homepage_blue"
                             android:importantForAccessibility="no" />
 
                         <TextView
