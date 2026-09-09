@@ -98,38 +98,6 @@
                         android:orientation="horizontal">
 
                         <RelativeLayout
-                            android:layout_width="0dp"
-                            android:layout_height="56dp"
-                            android:layout_weight="1"
-                            android:background="@drawable/bg_home_input"
-                            android:paddingStart="12dp"
-                            android:paddingEnd="18dp">
-
-                            <ImageView
-                                android:layout_width="20dp"
-                                android:layout_height="20dp"
-                                android:layout_centerVertical="true"
-                                android:contentDescription="学号"
-                                android:src="@drawable/ic_ph_identification_card" />
-
-                            <EditText
-                                android:id="@+id/editTextId"
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent"
-                                android:layout_marginStart="28dp"
-                                android:background="@android:color/transparent"
-                                android:gravity="center_vertical"
-                                android:hint="请输入学号"
-                                android:inputType="textVisiblePassword"
-                                android:paddingStart="0dp"
-                                android:paddingEnd="0dp"
-                                android:textColor="@color/home_text_primary"
-                                android:textColorHint="@color/home_text_secondary"
-                                android:textSize="15sp"
-                                android:includeFontPadding="false" />
-                        </RelativeLayout>
-
-                        <RelativeLayout
                             android:id="@+id/datePickerContainer"
                             android:layout_width="0dp"
                             android:layout_height="56dp"

@@ -1,6 +1,8 @@
 package top.aidanrao.buaa_classhopper.data.vpn
 
 import java.io.IOException
+import kotlinx.coroutines.CancellationException
+import retrofit2.HttpException
 import java.net.URLDecoder
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -41,22 +43,39 @@ object IclassSession {
         ?.takeIf { it.isNotBlank() }
 
     suspend fun login(api: IclassAuthApi, vpn: Boolean, base: HttpUrl = baseUrl(vpn)): IclassLoginResponse {
-        val jump = api.jumpMyCenter()
-        val name = try {
-            if (!jump.isSuccessful) throw IOException("iClass 跳转失败：HTTP ${jump.code()}")
-            val finalUrl = jump.raw().request.url
-            if (!isLanding(finalUrl, base)) throw IclassSessionExpiredException(vpn)
-            loginName(finalUrl) ?: throw IclassSessionExpiredException(vpn)
-        } finally {
-            jump.body()?.close()
-            jump.errorBody()?.close()
+        val name = atLoginStage(IclassLoginFailure.JUMP, vpn) {
+            val jump = api.jumpMyCenter()
+            try {
+                if (!jump.isSuccessful) throw HttpException(jump)
+                val finalUrl = jump.raw().request.url
+                if (!isLanding(finalUrl, base)) throw IclassSessionExpiredException(vpn)
+                loginName(finalUrl) ?: throw IclassSessionExpiredException(vpn)
+            } finally {
+                jump.body()?.close()
+                jump.errorBody()?.close()
+            }
         }
-        val response = api.login(name)
-        val user = response.result ?: return response
-        if (user.id.isNullOrBlank()) throw IOException("iClass 登录响应缺少用户标识")
-        return response.copy(result = user.copy(
-            sessionId = user.sessionId.takeUnless { it.isNullOrBlank() } ?: name,
-            vpnMode = vpn
-        ))
+        return atLoginStage(IclassLoginFailure.API_LOGIN, vpn) {
+            val response = api.login(name)
+            val user = response.result ?: return@atLoginStage response
+            if (user.id.isNullOrBlank()) throw InvalidIclassLoginResponse("登录响应缺少用户标识 id")
+            response.copy(result = user.copy(
+                sessionId = user.sessionId.takeUnless { it.isNullOrBlank() } ?: name,
+                vpnMode = vpn
+            ))
+        }
+    }
+
+    private suspend fun <T> atLoginStage(stage: String, vpn: Boolean, block: suspend () -> T): T {
+        return try {
+            block()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: IclassSessionExpiredException) {
+            // Keep the original type so callers still require SSO and do not use fallback.
+            throw e
+        } catch (e: Exception) {
+            throw IclassLoginFailure(stage, vpn, e)
+        }
     }
 }

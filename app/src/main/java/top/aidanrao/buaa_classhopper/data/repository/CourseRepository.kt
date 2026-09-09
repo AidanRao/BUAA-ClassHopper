@@ -12,6 +12,7 @@ import top.aidanrao.buaa_classhopper.data.model.dto.IclassLoginResponse
 import top.aidanrao.buaa_classhopper.data.vpn.VpnPreferences
 import top.aidanrao.buaa_classhopper.data.vpn.IclassSessionExpiredException
 import top.aidanrao.buaa_classhopper.data.vpn.IclassSession
+import top.aidanrao.buaa_classhopper.data.vpn.IclassLoginFailure
 import top.aidanrao.buaa_classhopper.data.vpn.IclassNetworkSelector
 import kotlinx.coroutines.CancellationException
 import top.aidanrao.buaa_classhopper.di.NetworkModule
@@ -59,8 +60,8 @@ class CourseRepository @Inject constructor(
                     vpnPreferences.setSessionReady(vpn, true)
                     Result.success(response)
                 } else {
-                    val errorMsg = response.ERRMSG ?: "登录失败"
-                    Result.error(Exception(errorMsg), errorMsg)
+                    val error = IclassLoginFailure.rejected(response, vpn)
+                    Result.error(error, error.message)
                 }
             } catch (e: IclassSessionExpiredException) {
                 vpnPreferences.setSessionReady(e.vpn, false)
@@ -68,7 +69,8 @@ class CourseRepository @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Result.error(e, "iClass 登录失败，请检查网络后重试")
+                Result.error(e, if (e is IclassLoginFailure) e.message
+                    else "iClass 登录失败：${IclassLoginFailure.reason(e)}")
             }
         }
     }

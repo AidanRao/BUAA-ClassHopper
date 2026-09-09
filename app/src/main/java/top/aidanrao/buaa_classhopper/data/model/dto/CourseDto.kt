@@ -28,7 +28,8 @@ data class IclassLoginResult(
     val sessionId: String,
     val realName: String,
     val academyName: String,
-    @Transient val vpnMode: Boolean = false
+    @Transient val vpnMode: Boolean = false,
+    val userName: String? = null
 )
 
 data class IclassScheduleResponse(

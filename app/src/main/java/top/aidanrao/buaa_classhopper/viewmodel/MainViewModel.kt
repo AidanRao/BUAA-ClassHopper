@@ -131,7 +131,11 @@ class MainViewModel @Inject constructor(
                 is Result.Success -> {
                     val loginData = loginResult.data.result
                     if (loginData != null) {
-                        _userInfo.postValue("${loginData.realName} - ${loginData.academyName}")
+                        _userInfo.postValue(
+                            listOfNotNull(loginData.realName, loginData.userName, loginData.academyName)
+                                .filter { it.isNotBlank() }
+                                .joinToString(" - ")
+                        )
                         
                         val dateStr = date.replace("-", "")
                         fetchCourseSchedule(loginData.id, loginData.sessionId, dateStr, loginData.vpnMode)
