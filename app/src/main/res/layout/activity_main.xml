@@ -130,39 +130,24 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginHorizontal="16dp"
-                    android:background="@drawable/home_panel"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical">
-                        <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:src="@drawable/ic_ph_calendar_blank"
-                            android:tint="@color/homepage_blue"
-                            android:importantForAccessibility="no" />
-
-                        <TextView style="@style/Home.SectionTitle" android:text="@string/home_choose_date" />
-                    </LinearLayout>
-
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="8dp">
                     <LinearLayout
                         android:id="@+id/datePickerContainer"
-                        android:layout_width="match_parent"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:minHeight="56dp"
-                        android:layout_marginTop="12dp"
+                        android:minHeight="48dp"
                         android:orientation="horizontal"
                         android:gravity="center_vertical"
                         android:background="@drawable/home_date_background"
-                        android:padding="14dp"
+                        android:padding="12dp"
                         android:clickable="true"
-                        android:focusable="true">
+                        android:focusable="true"
+                        android:layout_weight="1">
                         <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
                             android:src="@drawable/ic_ph_calendar_blank"
                             android:tint="@color/homepage_blue"
                             android:importantForAccessibility="no" />
@@ -172,37 +157,46 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:layout_marginStart="14dp"
+                            android:layout_marginStart="8dp"
                             android:textColor="@color/homepage_text"
-                            android:textSize="18sp"
-                            tools:text="2026-09-09" />
+                            android:textSize="16sp"
+                            tools:text="2026-09-09"
+                            android:maxLines="1"
+                            android:autoSizeTextType="uniform"
+                            android:autoSizeMinTextSize="10sp"
+                            android:autoSizeMaxTextSize="16sp"
+                            android:autoSizeStepGranularity="1sp" />
 
                         <ImageView
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
+                            android:layout_width="16dp"
+                            android:layout_height="16dp"
                             android:src="@drawable/home_ic_chevron"
                             android:importantForAccessibility="no" />
                     </LinearLayout>
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnGetClass"
-                        android:layout_width="match_parent"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:minHeight="64dp"
-                        android:layout_marginTop="12dp"
+                        android:minHeight="48dp"
                         android:background="@drawable/home_action_background"
                         app:backgroundTint="@null"
-                        android:paddingHorizontal="24dp"
-                        android:paddingVertical="16dp"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="10dp"
                         android:text="@string/home_query"
                         android:textAllCaps="false"
                         android:textColor="#FFFFFF"
-                        android:textSize="18sp"
+                        android:textSize="14sp"
                         android:fontFamily="sans-serif-medium"
                         app:icon="@drawable/home_ic_arrow"
                         app:iconGravity="textEnd"
-                        app:iconPadding="12dp"
-                        app:iconTint="#FFFFFF" />
+                        app:iconPadding="6dp"
+                        app:iconTint="#FFFFFF"
+                        android:layout_marginStart="8dp"
+                        android:minWidth="0dp"
+                        app:iconSize="16dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp" />
                 </LinearLayout>
 
                 <LinearLayout
