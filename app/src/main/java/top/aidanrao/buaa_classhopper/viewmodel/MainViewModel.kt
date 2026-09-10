@@ -1,6 +1,7 @@
 package top.aidanrao.buaa_classhopper.viewmodel
 
 import android.util.Log
+import top.aidanrao.buaa_classhopper.data.model.dto.IclassLoginResult
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -136,40 +137,21 @@ class MainViewModel @Inject constructor(
                         _userInfo.value = HomeIdentity(loginData.realName, loginData.userName, loginData.academyName)
                         
                         val dateStr = date.replace("-", "")
-                        fetchCourseSchedule(loginData.id, loginData.sessionId, dateStr, loginData.vpnMode)
+                        fetchCourseSchedule(loginData, dateStr)
                     } else {
                         failQuery(loginResult.data.ERRMSG ?: "登录失败")
                     }
                 }
                 is Result.Error -> {
-                    if (loginResult.exception !is top.aidanrao.buaa_classhopper.data.vpn.IclassSessionExpiredException &&
-                        courseRepository.isFallbackEnabledPublic() && authRepository.getValidToken() != null) {
-                        val dateStr = date.replace("-", "")
-                        fetchCourseScheduleFallback(dateStr)
-                    } else {
-                        failQuery(loginResult.getErrorMessage() ?: "登录失败")
-                    }
+                    failQuery(loginResult.getErrorMessage() ?: "登录失败")
                 }
                 Result.Loading -> {}
             }
         }
     }
 
-    private suspend fun fetchCourseSchedule(userId: String, sessionId: String, dateStr: String, vpn: Boolean) {
-        when (val result = courseRepository.getCourseSchedule(userId, sessionId, dateStr, vpn)) {
-            is Result.Success -> {
-                _courseState.value = HomeCourseState.Success(result.data)
-                isRequestInProgress = false
-            }
-            is Result.Error -> {
-                failQuery(result.getErrorMessage() ?: "获取课表失败")
-            }
-            Result.Loading -> {}
-        }
-    }
-
-    private suspend fun fetchCourseScheduleFallback(dateStr: String) {
-        when (val result = courseRepository.getCourseScheduleFallback(dateStr)) {
+    private suspend fun fetchCourseSchedule(loginData: IclassLoginResult, dateStr: String) {
+        when (val result = courseRepository.getCourseSchedule(loginData, dateStr)) {
             is Result.Success -> {
                 _courseState.value = HomeCourseState.Success(result.data)
                 isRequestInProgress = false

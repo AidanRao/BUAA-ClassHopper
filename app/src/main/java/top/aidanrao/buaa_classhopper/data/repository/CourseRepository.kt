@@ -1,5 +1,7 @@
 package top.aidanrao.buaa_classhopper.data.repository
 
+import top.aidanrao.buaa_classhopper.data.model.IclassAccessException
+import top.aidanrao.buaa_classhopper.data.model.dto.IclassLoginResult
 import android.content.Context
 import android.util.Log
 import top.aidanrao.buaa_classhopper.data.api.FallbackApi
@@ -35,6 +37,7 @@ class CourseRepository @Inject constructor(
     private val tokenManager: TokenManager,
     private val vpnPreferences: VpnPreferences,
     private val networkSelector: IclassNetworkSelector,
+    private val accessPolicy: IclassAccessPolicyRepository,
     @ApplicationContext private val context: Context
 ) {
     companion object {
@@ -62,12 +65,15 @@ class CourseRepository @Inject constructor(
                 )
                 if (response.result != null) {
                     vpnPreferences.setSessionReady(vpn, true)
+                    accessPolicy.requireAllowed(response.result.userName, response.result.realName)
                     Result.success(response)
                 } else {
                     vpnPreferences.setSessionReady(vpn, false)
                     val error = IclassLoginFailure.rejected(response, vpn)
                     Result.error(error, error.message)
                 }
+            } catch (e: IclassAccessException) {
+                Result.error(e, e.message)
             } catch (e: IclassSessionExpiredException) {
                 vpnPreferences.setSessionReady(e.vpn, false)
                 Result.error(e, e.message ?: "请重新通过 SSO 登录")
@@ -81,19 +87,20 @@ class CourseRepository @Inject constructor(
     }
 
     suspend fun getCourseSchedule(
-        userId: String,
-        sessionId: String,
-        dateStr: String,
-        vpn: Boolean
+        loginData: IclassLoginResult,
+        dateStr: String
     ): Result<List<CourseDto>> {
         return withContext(Dispatchers.IO) {
             try {
-                val response = iclassApi(vpn).getCourseSchedule(dateStr, userId, sessionId)
+                accessPolicy.requireAllowed(loginData.userName, loginData.realName)
+                val response = iclassApi(loginData.vpnMode).getCourseSchedule(dateStr, loginData.id, loginData.sessionId)
                 if (response.status == "2" || response.result.isNullOrEmpty()) {
                     Result.success(emptyList())
                 } else {
                     Result.success(response.result)
                 }
+            } catch (e: IclassAccessException) {
+                Result.error(e, e.message)
             } catch (e: IclassSessionExpiredException) {
                 vpnPreferences.setSessionReady(e.vpn, false)
                 Result.error(e, e.message ?: "请重新通过 SSO 登录")
@@ -101,7 +108,7 @@ class CourseRepository @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 if (isFallbackEnabled()) {
-                    getCourseScheduleFallback(dateStr)
+                    getCourseScheduleFallback(loginData, dateStr)
                 } else {
                     Result.error(e, "获取课表失败: ${e.message}")
                 }
@@ -109,9 +116,10 @@ class CourseRepository @Inject constructor(
         }
     }
 
-    suspend fun getCourseScheduleFallback(dateStr: String): Result<List<CourseDto>> {
+    private suspend fun getCourseScheduleFallback(loginData: IclassLoginResult, dateStr: String): Result<List<CourseDto>> {
         return withContext(Dispatchers.IO) {
             try {
+                accessPolicy.requireAllowed(loginData.userName, loginData.realName)
                 val token = tokenManager.getValidToken() ?: return@withContext Result.error(
                     Exception("No token"),
                     "未获取到授权令牌"
@@ -123,6 +131,7 @@ class CourseRepository @Inject constructor(
                     dateStr
                 }
                 
+                accessPolicy.requireAllowed(loginData.userName, loginData.realName)
                 val response = fallbackApi.getCourseSchedule(formattedDate, token)
                 if (response.code != 1) {
                     return@withContext Result.error(Exception(response.msg), response.msg)
@@ -132,6 +141,8 @@ class CourseRepository @Inject constructor(
                 Result.success(courses)
             } catch (e: CancellationException) {
                 throw e
+            } catch (e: IclassAccessException) {
+                Result.error(e, e.message)
             } catch (e: Exception) {
                 Log.e(TAG, "Fallback API failed", e)
                 Result.error(e, "Fallback接口失败: ${e.message}")
@@ -141,18 +152,11 @@ class CourseRepository @Inject constructor(
 
     suspend fun signClass(courseId: Int): Result<Unit> {
         return withContext(Dispatchers.IO) {
+            var authenticated: IclassLoginResult? = null
             try {
                 val vpn = networkSelector.useVpn()
                 val loginResult = login(vpn)
                 if (loginResult.isError) {
-                    // SSO 失效时直接提示登录，不再 fallback
-                    val cause = (loginResult as? Result.Error)?.exception
-                    if (cause is IclassSessionExpiredException) {
-                        return@withContext Result.error(cause, cause.message ?: "请重新通过 SSO 登录")
-                    }
-                    if (isFallbackEnabled()) {
-                        return@withContext signClassFallback(courseId)
-                    }
                     return@withContext loginResult.map { Unit }
                 }
 
@@ -160,26 +164,30 @@ class CourseRepository @Inject constructor(
                     Exception("登录失败"),
                     "登录失败"
                 )
+                authenticated = loginData
                 val timestamp = System.currentTimeMillis()
+                accessPolicy.requireAllowed(loginData.userName, loginData.realName)
                 
                 val response = iclassApi(vpn).signClass(courseId, timestamp, loginData.id)
                 if (response.result != null) {
                     Result.success(Unit)
                 } else {
                     if (isFallbackEnabled()) {
-                        signClassFallback(courseId)
+                        signClassFallback(loginData, courseId)
                     } else {
                         Result.error(Exception(response.msg), response.msg ?: "签到失败")
                     }
                 }
+            } catch (e: IclassAccessException) {
+                Result.error(e, e.message)
             } catch (e: IclassSessionExpiredException) {
                 vpnPreferences.setSessionReady(e.vpn, false)
                 Result.error(e, e.message ?: "请重新通过 SSO 登录")
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                if (isFallbackEnabled()) {
-                    signClassFallback(courseId)
+                if (isFallbackEnabled() && authenticated != null) {
+                    signClassFallback(authenticated, courseId)
                 } else {
                     Result.error(e, "签到失败: ${e.message}")
                 }
@@ -187,14 +195,16 @@ class CourseRepository @Inject constructor(
         }
     }
 
-    suspend fun signClassFallback(courseId: Int): Result<Unit> {
+    private suspend fun signClassFallback(loginData: IclassLoginResult, courseId: Int): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
+                accessPolicy.requireAllowed(loginData.userName, loginData.realName)
                 val token = tokenManager.getValidToken() ?: return@withContext Result.error(
                     Exception("No token"),
                     "未获取到授权令牌"
                 )
 
+                accessPolicy.requireAllowed(loginData.userName, loginData.realName)
                 val response = fallbackApi.signClass(courseId, token)
                 if (response.isSuccessful) {
                     Result.success(Unit)
@@ -203,6 +213,8 @@ class CourseRepository @Inject constructor(
                 }
             } catch (e: CancellationException) {
                 throw e
+            } catch (e: IclassAccessException) {
+                Result.error(e, e.message)
             } catch (e: Exception) {
                 Log.e(TAG, "Fallback sign failed", e)
                 Result.error(e, "Fallback签到失败: ${e.message}")
@@ -214,8 +226,6 @@ class CourseRepository @Inject constructor(
         val sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return sharedPreferences.getBoolean(KEY_FALLBACK_ENABLED, false)
     }
-
-    fun isFallbackEnabledPublic(): Boolean = isFallbackEnabled()
 
     private fun convertFallbackCourse(fallback: FallbackCourseDto): CourseDto? {
         return try {

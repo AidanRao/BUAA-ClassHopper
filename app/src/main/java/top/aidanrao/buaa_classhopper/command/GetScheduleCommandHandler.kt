@@ -46,7 +46,7 @@ class GetScheduleCommandHandler(private val context: Context) : CommandHandler {
                     )
                 val dateStr = date.replace("-", "")
                 
-                when (val scheduleResult = courseRepository.getCourseSchedule(loginData.id, loginData.sessionId, dateStr, loginData.vpnMode)) {
+                when (val scheduleResult = courseRepository.getCourseSchedule(loginData, dateStr)) {
                     is Result.Success -> {
                         val courses = scheduleResult.data
                         CommandExecutionResult(

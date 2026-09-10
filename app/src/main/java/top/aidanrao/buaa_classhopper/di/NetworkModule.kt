@@ -1,5 +1,7 @@
 package top.aidanrao.buaa_classhopper.di
 
+import java.util.concurrent.TimeUnit
+import top.aidanrao.buaa_classhopper.data.api.IclassAccessPolicyApi
 import android.content.Context
 import top.aidanrao.buaa_classhopper.data.api.AnnouncementApi
 import top.aidanrao.buaa_classhopper.data.api.AuthApi
@@ -42,12 +44,35 @@ object NetworkModule {
     private const val ICLASS_BASE_URL = VpnEndpoints.ICLASS_DIRECT_8347
     private const val FALLBACK_BASE_URL = "https://101.42.43.228/"
 
+    private const val ACCESS_POLICY_BASE_URL = "https://public-api.aidanrao.top/api/buaa-classhopper/"
+    const val CLIENT_ICLASS_ACCESS_POLICY = "iclassAccessPolicyClient"
+
     const val CLIENT_VPN = "vpnClient"
     const val CLIENT_ICLASS_DIRECT = "iclassDirectClient"
     const val AUTH_ICLASS_DIRECT = "iclassAuthDirect"
     const val AUTH_ICLASS_VPN = "iclassAuthVpn"
     const val API_ICLASS_DIRECT = "iclassDirect"
     const val API_ICLASS_VPN = "iclassVpn"
+
+    @Provides
+    @Singleton
+    @Named(CLIENT_ICLASS_ACCESS_POLICY)
+    fun provideIclassAccessPolicyClient(): OkHttpClient = OkHttpClient.Builder()
+        .addInterceptor(LoggingInterceptor(logBody = false))
+        .callTimeout(10, TimeUnit.SECONDS)
+        .followRedirects(false)
+        .followSslRedirects(false)
+        .build()
+
+    @Provides
+    @Singleton
+    fun provideIclassAccessPolicyApi(gson: Gson, @Named(CLIENT_ICLASS_ACCESS_POLICY) client: OkHttpClient): IclassAccessPolicyApi =
+        Retrofit.Builder()
+            .baseUrl(ACCESS_POLICY_BASE_URL)
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .build()
+            .create(IclassAccessPolicyApi::class.java)
 
     @Provides
     @Singleton

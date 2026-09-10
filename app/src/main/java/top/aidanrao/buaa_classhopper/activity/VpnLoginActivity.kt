@@ -2,6 +2,7 @@ package top.aidanrao.buaa_classhopper.activity
 
 import android.annotation.SuppressLint
 import android.os.Bundle
+import top.aidanrao.buaa_classhopper.data.model.IclassAccessException
 import android.util.Log
 import android.view.View
 import android.webkit.CookieManager
@@ -106,6 +107,11 @@ class VpnLoginActivity : AppCompatActivity() {
                                 finish()
                             }
                             is Result.Error -> {
+                                if (result.exception is IclassAccessException) {
+                                    statusText.text = "SSO 认证成功；${result.getErrorMessage()}"
+                                    // Keep the validated SSO session; do not loop through CAS again.
+                                    return@launch
+                                }
                                 val expired = result.exception as? IclassSessionExpiredException
                                 if (expired != null) {
                                     Log.w("VpnLoginActivity", "iClass session rejected: ${expired.diagnostic ?: "missing loginName"}")
