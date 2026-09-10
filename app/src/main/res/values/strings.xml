@@ -8,7 +8,7 @@
     <string name="splash_skip_countdown">跳过 %1$ds</string>
     <string name="iclass_network_checking">当前网络：正在检测校园网环境…</string>
     <string name="iclass_network_on_campus">当前网络：校园网，使用直连</string>
-    <string name="iclass_network_off_campus">当前网络：未检测到校园网，使用北航 VPN</string>
+    <string name="iclass_network_off_campus">当前网络：未检测到校园网，使用 VPN</string>
     <string name="iclass_direct_session_saved">直连：会话已保存</string>
     <string name="iclass_direct_session_missing">直连：未登录或已失效</string>
     <string name="iclass_vpn_session_saved">VPN：会话已保存</string>
