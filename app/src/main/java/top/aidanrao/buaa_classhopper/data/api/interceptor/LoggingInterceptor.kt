@@ -5,9 +5,8 @@ import okhttp3.Interceptor
 import okhttp3.Response
 import okio.Buffer
 import java.nio.charset.StandardCharsets
-import javax.inject.Inject
 
-class LoggingInterceptor @Inject constructor() : Interceptor {
+class LoggingInterceptor(private val logBody: Boolean = true) : Interceptor {
     
     companion object {
         private const val TAG = "HttpLogger"
@@ -50,7 +49,7 @@ class LoggingInterceptor @Inject constructor() : Interceptor {
             Log.d(TAG, "│ $name: $maskedValue")
         }
         
-        request.body?.let { body ->
+        if (logBody) request.body?.let { body ->
             val buffer = Buffer()
             body.writeTo(buffer)
             val charset = body.contentType()?.charset(StandardCharsets.UTF_8) ?: StandardCharsets.UTF_8
@@ -74,20 +73,25 @@ class LoggingInterceptor @Inject constructor() : Interceptor {
             Log.d(TAG, "│ $name: $value")
         }
         
-        val responseBody = response.body
-        val source = responseBody?.source()
-        source?.request(Long.MAX_VALUE)
-        val buffer = source?.buffer
-        
-        val charset = responseBody?.contentType()?.charset(StandardCharsets.UTF_8) ?: StandardCharsets.UTF_8
-        
-        if (buffer != null) {
-            val bodyString = buffer.clone().readString(charset)
-            if (bodyString.isNotEmpty()) {
-                logLongString(TAG, "│ Body: ", bodyString)
+        if (logBody) {
+            val responseBody = response.body
+            val source = responseBody?.source()
+            source?.request(Long.MAX_VALUE)
+            val buffer = source?.buffer
+
+            val charset = responseBody?.contentType()?.charset(StandardCharsets.UTF_8) ?: StandardCharsets.UTF_8
+
+            if (buffer != null) {
+                val bodyString = buffer.clone().readString(charset)
+                if (bodyString.isNotEmpty()) {
+                    logLongString(TAG, "│ Body: ", bodyString)
+                }
             }
+
+        } else {
+            Log.d(TAG, "│ Body: [omitted]")
         }
-        
+
         Log.d(TAG, "└──────────────────────────────────────────────")
     }
 

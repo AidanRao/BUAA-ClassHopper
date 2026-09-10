@@ -7,10 +7,11 @@ import android.view.View
 import android.widget.*
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.SystemBarStyle
+import androidx.core.view.isVisible
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.edit
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -24,21 +25,18 @@ import top.aidanrao.buaa_classhopper.NavigationManager
 import top.aidanrao.buaa_classhopper.R
 import top.aidanrao.buaa_classhopper.data.model.dto.UserInfoDto
 import top.aidanrao.buaa_classhopper.data.repository.CourseRepository
-import top.aidanrao.buaa_classhopper.ui.CourseTableRenderer
+import top.aidanrao.buaa_classhopper.ui.HomeContentRenderer
+import top.aidanrao.buaa_classhopper.ui.HomeCourseState
 import top.aidanrao.buaa_classhopper.viewmodel.MainViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
-    private lateinit var tableLayout: TableLayout
-    private lateinit var editTextId: EditText
     private lateinit var textViewDate: TextView
-    private lateinit var datePickerContainer: RelativeLayout
-    private lateinit var calendarIcon: ImageView
-    private lateinit var emptyStateLayout: LinearLayout
+    private lateinit var datePickerContainer: LinearLayout
     private lateinit var userInfoTextView: TextView
-    private lateinit var courseTableRenderer: CourseTableRenderer
+    private lateinit var homeContentRenderer: HomeContentRenderer
     private lateinit var scanButton: ImageButton
     private lateinit var scanLauncher: ActivityResultLauncher<ScanOptions>
     
@@ -48,12 +46,13 @@ class MainActivity : AppCompatActivity() {
 
     private val viewModel: MainViewModel by viewModels()
 
-    private val PREFS_NAME = "ClassHopperPrefs"
-    private val KEY_STUDENT_ID = "student_id"
-
     override fun onCreate(savedInstanceState: Bundle?) {
+        setTheme(R.style.Theme_ClassHopper_Home)
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+        )
         setContentView(R.layout.activity_main)
         scanLauncher = registerForActivityResult(ScanContract()) { result ->
             val contents = result.contents
@@ -76,62 +75,25 @@ class MainActivity : AppCompatActivity() {
         // 获取用户信息
         viewModel.fetchUserProfile()
         
-        // 恢复保存的学号
-        val sharedPreferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-        val savedStudentId = sharedPreferences.getString(KEY_STUDENT_ID, "22370000")
-        editTextId.setText(savedStudentId)
-        applyIdentityLine(studentId = savedStudentId, rawName = null)
-        
-        // 设置默认日期
-        val currentDate = Calendar.getInstance()
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        textViewDate.text = dateFormat.format(currentDate.time)
-        
-        // 如果学号和日期都已填充，自动加载课表
-        val studentId = editTextId.text.toString()
-        val date = textViewDate.text.toString()
-        if (studentId.isNotEmpty() && date.isNotEmpty()) {
-            viewModel.getClassInfo(studentId, date)
-        }
+        textViewDate.text = viewModel.selectedDate
+        updateDateAccessibility()
+        if (viewModel.courseState.value == null) viewModel.getClassInfo(viewModel.selectedDate)
     }
 
     private fun initViews() {
-        tableLayout = findViewById(R.id.tableLayout)
-        editTextId = findViewById(R.id.editTextId)
         textViewDate = findViewById(R.id.textViewDate)
         datePickerContainer = findViewById(R.id.datePickerContainer)
-        calendarIcon = findViewById(R.id.calendarIcon)
-        emptyStateLayout = findViewById(R.id.emptyStateLayout)
         userInfoTextView = findViewById(R.id.userInfoTextView)
         hamburgerButton = findViewById(R.id.hamburger_button)
         drawerLayout = findViewById(R.id.drawer_layout)
         navView = findViewById(R.id.nav_view)
         scanButton = findViewById(R.id.scanButton)
 
-        courseTableRenderer = CourseTableRenderer(
-            context = this,
-            tableLayout = tableLayout,
-            onSignClick = { courseId ->
-                viewModel.signClass(
-                    editTextId.text.toString(),
-                    courseId,
-                    textViewDate.text.toString()
-                )
-            }
-        )
-
+        homeContentRenderer = HomeContentRenderer(findViewById(R.id.content_layout)) { courseId -> viewModel.signClass(courseId) }
         datePickerContainer.setOnClickListener { showDatePickerDialog() }
-        calendarIcon.setOnClickListener { showDatePickerDialog() }
 
         findViewById<Button>(R.id.btnGetClass).setOnClickListener {
-            val id = editTextId.text.toString()
-            val date = textViewDate.text.toString()
-            viewModel.getClassInfo(id, date)
-            
-            // 保存学号
-            getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit {
-                putString(KEY_STUDENT_ID, id)
-            }
+            viewModel.getClassInfo(textViewDate.text.toString())
         }
 
         scanButton.setOnClickListener { startScan() }
@@ -189,25 +151,25 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initObservers() {
-        viewModel.courses.observe(this) { courses ->
-            hideEmptyState()
-            courseTableRenderer.render(courses)
+        viewModel.courseState.observe(this) { state -> renderCourseState(state) }
+        viewModel.signingIds.observe(this) {
+            (viewModel.courseState.value as? HomeCourseState.Success)?.let { state ->
+                renderCourseState(state)
+            }
         }
-
         viewModel.userInfo.observe(this) { info ->
-            applyIdentityLine(
-                studentId = editTextId.text?.toString(),
-                rawName = info
-            )
-        }
-
-        viewModel.isEmpty.observe(this) { isEmpty ->
-            if (isEmpty) showEmptyState() else hideEmptyState()
+            userInfoTextView.text = info.title
+            userInfoTextView.isVisible = info.title.isNotBlank()
+            findViewById<TextView>(R.id.academyTextView).apply {
+                text = info.academy
+                isVisible = !info.academy.isNullOrBlank()
+            }
         }
 
         viewModel.error.observe(this) { errorMsg ->
-            if (errorMsg == CourseRepository.VPN_SESSION_EXPIRED_MESSAGE) {
-                showVpnSessionExpiredDialog()
+            if (errorMsg == CourseRepository.VPN_SESSION_EXPIRED_MESSAGE ||
+                errorMsg == CourseRepository.DIRECT_SESSION_EXPIRED_MESSAGE) {
+                showSessionExpiredDialog(errorMsg)
             } else {
                 Toast.makeText(this, errorMsg, Toast.LENGTH_LONG).show()
             }
@@ -219,54 +181,33 @@ class MainActivity : AppCompatActivity() {
         
         // 观察用户信息变化
         viewModel.userProfile.observe(this) { userInfo ->
-            applyIdentityLine(
-                studentId = userInfo.studentId,
-                rawName = userInfo.username
-            )
             updateDrawerHeader(userInfo)
         }
     }
 
-    override fun onStart() {
-        super.onStart()
+    private fun renderCourseState(state: HomeCourseState) {
+        homeContentRenderer.render(state, viewModel.signingIds.value.orEmpty())
     }
 
-    override fun onStop() {
-        super.onStop()
-    }
-    
-    override fun onPause() {
-        super.onPause()
-        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit {
-            putString(KEY_STUDENT_ID, editTextId.text.toString())
-        }
-    }
-
-    private fun showEmptyState() {
-        tableLayout.visibility = View.GONE
-        emptyStateLayout.visibility = View.VISIBLE
+    private fun updateDateAccessibility() {
+        datePickerContainer.contentDescription = "${getString(R.string.home_choose_date)}，${textViewDate.text}"
     }
 
     private var vpnExpiredDialogShown = false
-    private fun showVpnSessionExpiredDialog() {
+    private fun showSessionExpiredDialog(message: String) {
         if (vpnExpiredDialogShown) return
         vpnExpiredDialogShown = true
         AlertDialog.Builder(this)
-            .setTitle("VPN 会话已失效")
-            .setMessage("登录状态已过期，请重新通过 SSO 登录北航 VPN 后继续使用")
+            .setTitle("请登录 SSO")
+            .setMessage(message)
             .setCancelable(false)
             .setPositiveButton("去登录") { dialog, _ ->
                 dialog.dismiss()
-                startActivity(Intent(this, VpnLoginActivity::class.java))
+                startActivity(Intent(this, SettingsActivity::class.java))
             }
             .setNegativeButton("取消", null)
             .setOnDismissListener { vpnExpiredDialogShown = false }
             .show()
-    }
-
-    private fun hideEmptyState() {
-        tableLayout.visibility = View.VISIBLE
-        emptyStateLayout.visibility = View.GONE
     }
 
     private fun showDatePickerDialog() {
@@ -292,12 +233,10 @@ class MainActivity : AppCompatActivity() {
             val formattedDay = String.format(Locale.getDefault(), "%02d", selectedDayOfMonth)
             val formattedDate = "$selectedYear-$formattedMonth-$formattedDay"
             textViewDate.text = formattedDate
+            updateDateAccessibility()
             
             // 自动加载
-            val id = editTextId.text.toString()
-            if (id.isNotEmpty()) {
-                viewModel.getClassInfo(id, formattedDate)
-            }
+            viewModel.getClassInfo(formattedDate)
         }, year, month, day).show()
     }
 
@@ -316,19 +255,6 @@ class MainActivity : AppCompatActivity() {
         if (!success) {
             Toast.makeText(this, "无法处理二维码内容", Toast.LENGTH_SHORT).show()
         }
-    }
-
-    private fun applyIdentityLine(studentId: String?, rawName: String?) {
-        val cleanedStudentId = studentId?.trim().orEmpty()
-        val cleanedName = rawName
-            ?.substringBefore(" - ")
-            ?.trim()
-            .orEmpty()
-
-        userInfoTextView.text = listOf(cleanedStudentId, cleanedName)
-            .filter { it.isNotEmpty() }
-            .joinToString("  ")
-            .ifEmpty { "学号  姓名" }
     }
 
     private fun updateDrawerHeader(userInfo: UserInfoDto) {

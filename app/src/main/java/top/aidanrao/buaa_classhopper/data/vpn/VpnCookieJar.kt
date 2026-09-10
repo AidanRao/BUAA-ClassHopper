@@ -5,6 +5,7 @@ import android.webkit.CookieManager
 import okhttp3.Cookie
 import okhttp3.CookieJar
 import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -24,6 +25,9 @@ class VpnCookieJar @Inject constructor(
 
     companion object {
         private const val TAG = "VpnCookieJar"
+        private val SESSION_HOSTS = setOf(
+            VpnEndpoints.VPN_HOST, "iclass.buaa.edu.cn", "sso.buaa.edu.cn", "uc.buaa.edu.cn"
+        )
     }
 
     init {
@@ -32,7 +36,7 @@ class VpnCookieJar @Inject constructor(
     }
 
     override fun loadForRequest(url: HttpUrl): List<Cookie> {
-        if (!url.host.endsWith(VpnEndpoints.VPN_HOST)) return emptyList()
+        if (url.host !in SESSION_HOSTS) return emptyList()
         val cookieHeader = CookieManager.getInstance().getCookie(url.toString()) ?: return emptyList()
         val cookies = mutableListOf<Cookie>()
         cookieHeader.split(";").forEach { raw ->
@@ -45,17 +49,17 @@ class VpnCookieJar @Inject constructor(
     }
 
     override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
-        if (!url.host.endsWith(VpnEndpoints.VPN_HOST)) return
+        if (url.host !in SESSION_HOSTS) return
         val manager = CookieManager.getInstance()
         cookies.forEach { cookie ->
             try {
-                manager.setCookie("https://${cookie.domain}", cookie.toString())
+                manager.setCookie(url.toString(), cookie.toString())
             } catch (e: Exception) {
                 Log.w(TAG, "setCookie failed: ${cookie.name}", e)
             }
         }
         manager.flush()
-        persistCookies()
+        if (url.host == VpnEndpoints.VPN_HOST) persistCookies()
     }
 
     /** 将 WebView 当前的 d.buaa.edu.cn cookie 序列化并持久化。 */
@@ -84,10 +88,42 @@ class VpnCookieJar @Inject constructor(
         return !header.isNullOrBlank()
     }
 
-    fun clear() {
+    /** Expire only cookies belonging to the selected authentication mode. */
+    fun clear(vpn: Boolean, then: () -> Unit = {}) {
         val manager = CookieManager.getInstance()
-        manager.removeAllCookies(null)
-        manager.flush()
-        vpnPreferences.clearVpnCookies()
+        val urls = if (vpn) listOf(
+            "https://${VpnEndpoints.VPN_HOST}/", VpnEndpoints.VPN_CAS_LOGIN_URL,
+            VpnEndpoints.ICLASS_VPN_8346, VpnEndpoints.ICLASS_VPN_8347
+        ) else listOf("https://sso.buaa.edu.cn/login", "https://sso.buaa.edu.cn/",
+            "https://uc.buaa.edu.cn/",
+            VpnEndpoints.ICLASS_DIRECT_8346, VpnEndpoints.ICLASS_DIRECT_8347)
+        val removals = mutableSetOf<Pair<String, String>>()
+        urls.forEach { address ->
+            val url = address.toHttpUrl()
+            val paths = mutableSetOf("/", url.encodedPath)
+            var path = url.encodedPath.substringBeforeLast('/', "")
+            while (path.isNotEmpty()) {
+                paths.add(path)
+                paths.add("$path/")
+                path = path.substringBeforeLast('/', "")
+            }
+            manager.getCookie(address)?.split(';')?.forEach { raw ->
+                val name = raw.trim().substringBefore('=')
+                paths.forEach { cookiePath ->
+                    removals.add(address to "$name=; Max-Age=0; Path=$cookiePath")
+                    removals.add(address to "$name=; Max-Age=0; Domain=${url.host}; Path=$cookiePath")
+                }
+            }
+        }
+        vpnPreferences.setSessionReady(vpn, false)
+        if (vpn) vpnPreferences.clearVpnCookies()
+        if (removals.isEmpty()) { then(); return }
+        var remaining = removals.size
+        removals.forEach { (url, cookie) ->
+            manager.setCookie(url, cookie) {
+                remaining -= 1
+                if (remaining == 0) { manager.flush(); then() }
+            }
+        }
     }
 }

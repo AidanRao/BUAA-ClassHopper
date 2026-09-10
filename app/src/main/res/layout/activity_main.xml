@@ -1,307 +1,324 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.drawerlayout.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.drawerlayout.widget.DrawerLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/drawer_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true"
     tools:context=".activity.MainActivity">
-
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <FrameLayout
         android:id="@+id/content_layout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/home_background"
-        android:fitsSystemWindows="true">
-
+        android:background="@drawable/home_page_background">
         <ScrollView
             android:id="@+id/homeScrollView"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
             android:clipToPadding="false"
-            android:fillViewport="true"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent">
-
+            android:fillViewport="true">
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:paddingBottom="24dp">
-
-                <androidx.constraintlayout.widget.ConstraintLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/bg_home_hero_gradient"
-                    android:paddingStart="20dp"
-                    android:paddingTop="12dp"
-                    android:paddingEnd="20dp"
-                    android:paddingBottom="28dp">
-
-                    <ImageButton
-                        android:id="@+id/hamburger_button"
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
-                        android:background="@drawable/bg_home_icon_button"
-                        android:contentDescription="打开侧边栏"
-                        android:padding="12dp"
-                        android:src="@drawable/ic_ph_list"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toTopOf="parent" />
-
-                    <ImageButton
-                        android:id="@+id/scanButton"
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
-                        android:background="@drawable/bg_home_icon_button"
-                        android:contentDescription="扫码"
-                        android:padding="12dp"
-                        android:src="@drawable/ic_ph_qr_code"
-                        app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintTop_toTopOf="parent" />
-
-                    <TextView
-                        android:id="@+id/userInfoTextView"
-                        android:layout_width="0dp"
+                <FrameLayout android:layout_width="match_parent" android:layout_height="wrap_content">
+                    <FrameLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="28dp"
-                        android:background="@drawable/bg_home_status_chip"
-                        android:ellipsize="end"
-                        android:maxLines="1"
-                        android:paddingStart="14dp"
-                        android:paddingTop="8dp"
-                        android:paddingEnd="14dp"
-                        android:paddingBottom="8dp"
-                        android:text="学号 姓名"
-                        android:textColor="@color/home_text_on_hero"
-                        android:textSize="15sp"
-                        app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toBottomOf="@id/hamburger_button" />
-                </androidx.constraintlayout.widget.ConstraintLayout>
+                        android:layout_gravity="bottom">
+                        <ImageView
+                            android:id="@+id/headerArtwork"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:src="@drawable/home_header_art"
+                            android:scaleType="fitEnd"
+                            android:importantForAccessibility="no"
+                            android:adjustViewBounds="true" />
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:layout_marginTop="16dp"
-                    android:layout_marginEnd="16dp"
-                    android:background="@drawable/bg_home_query_card"
-                    android:orientation="vertical">
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="24dp"
+                            android:layout_gravity="top"
+                            android:background="@drawable/home_header_top_fade"
+                            android:importantForAccessibility="no" />
+                    </FrameLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="28dp"
+                        android:layout_gravity="bottom"
+                        android:background="@drawable/home_header_fade"
+                        android:importantForAccessibility="no" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal">
+                        android:orientation="vertical"
+                        android:paddingTop="12dp">
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:paddingHorizontal="22dp"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+                            <ImageButton
+                                android:id="@+id/hamburger_button"
+                                android:layout_width="48dp"
+                                android:layout_height="48dp"
+                                android:background="@drawable/home_round_button"
+                                android:padding="13dp"
+                                android:contentDescription="@string/home_open_menu"
+                                android:src="@drawable/ic_ph_list"
+                                android:tint="@color/homepage_blue" />
 
-                        <RelativeLayout
-                            android:layout_width="0dp"
-                            android:layout_height="56dp"
-                            android:layout_weight="1"
-                            android:background="@drawable/bg_home_input"
-                            android:paddingStart="18dp"
-                            android:paddingEnd="18dp">
+                            <Space
+                                android:layout_width="0dp"
+                                android:layout_height="1dp"
+                                android:layout_weight="1" />
 
-                            <ImageView
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
-                                android:layout_centerVertical="true"
-                                android:contentDescription="学号"
-                                android:src="@drawable/ic_ph_identification_card" />
+                            <ImageButton
+                                android:id="@+id/scanButton"
+                                android:layout_width="48dp"
+                                android:layout_height="48dp"
+                                android:background="@drawable/home_round_button"
+                                android:padding="12dp"
+                                android:contentDescription="@string/home_scan"
+                                android:src="@drawable/ic_ph_qr_code"
+                                android:tint="@color/homepage_blue" />
+                        </LinearLayout>
 
-                            <EditText
-                                android:id="@+id/editTextId"
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent"
-                                android:layout_marginStart="34dp"
-                                android:background="@android:color/transparent"
-                                android:gravity="center_vertical"
-                                android:hint="请输入学号"
-                                android:inputType="textVisiblePassword"
-                                android:paddingStart="0dp"
-                                android:paddingEnd="0dp"
-                                android:textColor="@color/home_text_primary"
-                                android:textColorHint="@color/home_text_secondary" />
-                        </RelativeLayout>
-
-                        <RelativeLayout
-                            android:id="@+id/datePickerContainer"
-                            android:layout_width="0dp"
-                            android:layout_height="56dp"
-                            android:layout_marginStart="12dp"
-                            android:layout_weight="1"
-                            android:background="@drawable/bg_home_input"
-                            android:clickable="true"
-                            android:focusable="true"
-                            android:paddingStart="18dp"
-                            android:paddingEnd="18dp">
-
-                            <ImageView
-                                android:id="@+id/calendarIcon"
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
-                                android:layout_centerVertical="true"
-                                android:contentDescription="选择日期"
-                                android:src="@drawable/ic_ph_calendar_blank" />
-
-                            <TextView
-                                android:id="@+id/textViewDate"
+                        <FrameLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:minHeight="136dp">
+                            <LinearLayout
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:layout_centerVertical="true"
-                                android:layout_marginStart="34dp"
-                                android:background="@android:color/transparent"
-                                android:clickable="false"
-                                android:focusable="false"
-                                android:gravity="center_vertical"
-                                android:includeFontPadding="false"
-                                android:paddingStart="0dp"
-                                android:paddingEnd="0dp"
-                                android:textColor="@color/home_text_primary"
-                                android:textColorHint="@color/home_text_secondary"
-                                android:textSize="15sp"
-                                tools:text="2026-05-05" />
-                        </RelativeLayout>
+                                android:orientation="vertical"
+                                android:paddingHorizontal="24dp"
+                                android:paddingTop="16dp"
+                                android:paddingBottom="42dp">
+                                <TextView
+                                    android:id="@+id/userInfoTextView"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:textColor="@color/homepage_text"
+                                    android:textSize="20sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:visibility="gone"
+                                    tools:visibility="visible"
+                                    tools:text="饶晨煜 - ZY2623327" />
+
+                                <TextView
+                                    android:id="@+id/academyTextView"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="4dp"
+                                    android:textColor="@color/homepage_secondary"
+                                    android:textSize="15sp"
+                                    android:visibility="gone"
+                                    tools:visibility="visible"
+                                    tools:text="国家卓越工程师学院" />
+                            </LinearLayout>
+                        </FrameLayout>
+                    </LinearLayout>
+                </FrameLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="16dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="8dp">
+                    <LinearLayout
+                        android:id="@+id/datePickerContainer"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:minHeight="48dp"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:background="@drawable/home_date_background"
+                        android:padding="12dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:layout_weight="1">
+                        <ImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:src="@drawable/ic_ph_calendar_blank"
+                            android:tint="@color/homepage_blue"
+                            android:importantForAccessibility="no" />
+
+                        <TextView
+                            android:id="@+id/textViewDate"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="8dp"
+                            android:textColor="@color/homepage_text"
+                            android:textSize="16sp"
+                            tools:text="2026-09-09"
+                            android:maxLines="1"
+                            android:autoSizeTextType="uniform"
+                            android:autoSizeMinTextSize="10sp"
+                            android:autoSizeMaxTextSize="16sp"
+                            android:autoSizeStepGranularity="1sp" />
+
+                        <ImageView
+                            android:layout_width="16dp"
+                            android:layout_height="16dp"
+                            android:src="@drawable/home_ic_chevron"
+                            android:importantForAccessibility="no" />
                     </LinearLayout>
 
-                    <Button
+                    <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnGetClass"
-                        android:layout_width="match_parent"
-                        android:layout_height="56dp"
-                        android:layout_marginTop="16dp"
-                        android:background="@drawable/bg_home_primary_button"
-                        android:text="查询课程"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minHeight="48dp"
+                        android:background="@drawable/home_action_background"
+                        app:backgroundTint="@null"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="10dp"
+                        android:text="@string/home_query"
                         android:textAllCaps="false"
-                        android:textColor="@android:color/white"
-                        android:textSize="16sp" />
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp"
+                        android:fontFamily="sans-serif-medium"
+                        app:icon="@drawable/home_ic_arrow"
+                        app:iconGravity="textEnd"
+                        app:iconPadding="6dp"
+                        app:iconTint="#FFFFFF"
+                        android:layout_marginStart="8dp"
+                        android:minWidth="0dp"
+                        app:iconSize="16dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp" />
                 </LinearLayout>
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
+                    android:layout_marginHorizontal="16dp"
                     android:layout_marginTop="16dp"
-                    android:layout_marginEnd="16dp"
-                    android:background="@drawable/bg_home_result_card"
-                    android:orientation="vertical">
-
+                    android:background="@drawable/home_panel"
+                    android:orientation="vertical"
+                    android:padding="12dp">
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:orientation="horizontal"
                         android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
+                        android:padding="6dp">
                         <ImageView
                             android:layout_width="24dp"
                             android:layout_height="24dp"
-                            android:src="@drawable/ic_home_course" />
+                            android:src="@drawable/home_ic_book"
+                            android:importantForAccessibility="no" />
+
+                        <TextView
+                            style="@style/Home.SectionTitle"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:text="@string/home_courses" />
+
+                        <TextView
+                            android:id="@+id/courseCount"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="6dp"
+                            android:background="@drawable/home_count_background"
+                            android:paddingHorizontal="10dp"
+                            android:paddingVertical="5dp"
+                            android:textColor="@color/homepage_secondary"
+                            android:textSize="12sp"
+                            android:visibility="gone"
+                            tools:visibility="visible"
+                            tools:text="共 4 门课程" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/courseList"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+
+                    <LinearLayout
+                        android:id="@+id/loadingState"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="240dp"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:padding="24dp"
+                        android:visibility="gone">
+                        <ProgressBar
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:indeterminateTint="@color/homepage_blue" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="10dp"
-                            android:fontFamily="sans-serif-medium"
-                            android:text="课程列表"
-                            android:textColor="@color/home_text_primary"
-                            android:textSize="18sp" />
+                            android:layout_marginTop="16dp"
+                            android:text="@string/home_loading"
+                            android:textColor="@color/homepage_secondary"
+                            android:textSize="15sp"
+                            android:accessibilityLiveRegion="polite" />
                     </LinearLayout>
-
-                    <TableLayout
-                        android:id="@+id/tableLayout"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
-                        android:stretchColumns="*">
-
-                        <TableRow
-                            android:background="@color/home_table_header"
-                            android:padding="12dp">
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="课程名称"
-                                android:textColor="@color/home_table_text"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="时间"
-                                android:textColor="@color/home_table_text"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="0.75"
-                                android:text="教室"
-                                android:textColor="@color/home_table_text"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="0.75"
-                                android:text="签到"
-                                android:textColor="@color/home_table_text"
-                                android:textStyle="bold" />
-                        </TableRow>
-                    </TableLayout>
 
                     <LinearLayout
                         android:id="@+id/emptyStateLayout"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:minHeight="340dp"
                         android:gravity="center"
                         android:orientation="vertical"
+                        android:paddingHorizontal="12dp"
                         android:paddingTop="28dp"
-                        android:paddingBottom="20dp"
-                        android:visibility="gone">
+                        android:paddingBottom="32dp"
+                        android:visibility="gone"
+                        tools:visibility="visible">
+                        <!-- Replace home_empty_art with transparent empty-state artwork. -->
 
-                        <FrameLayout
-                            android:layout_width="120dp"
-                            android:layout_height="120dp"
-                            android:background="@drawable/bg_home_empty_illustration"
-                            android:foregroundGravity="center">
-
-                            <ImageView
-                                android:layout_width="72dp"
-                                android:layout_height="72dp"
-                                android:layout_gravity="center"
-                                android:src="@drawable/ic_home_empty"
-                                app:tint="@color/home_empty_tint" />
-                        </FrameLayout>
+                        <ImageView
+                            android:id="@+id/emptyArtwork"
+                            android:layout_width="match_parent"
+                            android:layout_height="180dp"
+                            android:src="@drawable/home_empty_art"
+                            android:scaleType="fitCenter"
+                            android:importantForAccessibility="no" />
 
                         <TextView
-                            android:layout_width="wrap_content"
+                            android:id="@+id/resultStateTitle"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="18dp"
+                            android:layout_marginTop="16dp"
                             android:fontFamily="sans-serif-medium"
-                            android:text="这一天暂时没有课程"
-                            android:textColor="@color/home_text_primary"
-                            android:textSize="20sp" />
+                            android:gravity="center"
+                            android:text="@string/home_empty_title"
+                            android:textColor="@color/homepage_text"
+                            android:textSize="21sp" />
 
                         <TextView
-                            android:layout_width="wrap_content"
+                            android:id="@+id/resultStateDescription"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
+                            android:layout_marginTop="12dp"
                             android:gravity="center"
-                            android:maxWidth="260dp"
-                            android:text="你可以切换日期重新查询，或确认学号是否填写正确。"
-                            android:textColor="@color/home_text_secondary"
-                            android:textSize="15sp" />
+                            android:lineSpacingExtra="4dp"
+                            android:text="@string/home_empty_description"
+                            android:textColor="@color/homepage_secondary"
+                            android:textSize="15sp"
+                            android:accessibilityLiveRegion="polite" />
                     </LinearLayout>
                 </LinearLayout>
             </LinearLayout>
         </ScrollView>
-    </androidx.constraintlayout.widget.ConstraintLayout>
+    </FrameLayout>
 
     <LinearLayout
         android:id="@+id/drawer_container"
@@ -313,10 +330,7 @@
         android:elevation="8dp"
         android:fitsSystemWindows="true"
         android:orientation="vertical">
-
-        <include
-            android:id="@+id/drawer_header"
-            layout="@layout/drawer_header" />
+        <include android:id="@+id/drawer_header" layout="@layout/drawer_header" />
 
         <com.google.android.material.navigation.NavigationView
             android:id="@+id/nav_view"
@@ -338,9 +352,6 @@
             android:layout_height="1dp"
             android:background="@color/home_card_border" />
 
-        <include
-            android:id="@+id/drawer_footer"
-            layout="@layout/drawer_footer" />
+        <include android:id="@+id/drawer_footer" layout="@layout/drawer_footer" />
     </LinearLayout>
-
 </androidx.drawerlayout.widget.DrawerLayout>

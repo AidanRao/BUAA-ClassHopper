@@ -1,3 +1,8 @@
+import com.google.gson.JsonParser
+import com.google.gson.stream.JsonReader
+import com.google.gson.stream.JsonToken
+import java.io.StringReader
+import groovy.json.JsonOutput
 import java.util.Properties
 
 plugins {
@@ -21,7 +26,41 @@ android {
         localPropertiesFile.inputStream().use { localProperties.load(it) }
     }
 
+    val accessPolicyJson = System.getenv("ICLASS_ACCESS_POLICY_JSON")?.trim().orEmpty()
+    if (accessPolicyJson.isNotEmpty()) {
+        val valid = runCatching {
+            JsonReader(StringReader(accessPolicyJson)).use { reader ->
+                reader.isLenient = false
+                fun consume() {
+                    when (reader.peek()) {
+                        JsonToken.BEGIN_OBJECT -> { reader.beginObject(); while (reader.hasNext()) { reader.nextName(); consume() }; reader.endObject() }
+                        JsonToken.BEGIN_ARRAY -> { reader.beginArray(); while (reader.hasNext()) consume(); reader.endArray() }
+                        JsonToken.STRING, JsonToken.NUMBER -> reader.nextString()
+                        JsonToken.BOOLEAN -> reader.nextBoolean()
+                        JsonToken.NULL -> reader.nextNull()
+                        else -> error("Invalid JSON")
+                    }
+                }
+                consume()
+                require(reader.peek() == JsonToken.END_DOCUMENT)
+            }
+            val policy = JsonParser.parseString(accessPolicyJson).asJsonObject
+            val version = policy.get("schemaVersion")
+            val revision = policy.get("revision")
+            version != null && version.isJsonPrimitive && version.asJsonPrimitive.isNumber && version.toString() == "1" &&
+                revision != null && revision.isJsonPrimitive && revision.asJsonPrimitive.isString && revision.asString.isNotBlank() &&
+                listOf("studentIds", "names").all { key ->
+                    val entries = policy.get(key)
+                    entries != null && entries.isJsonArray && entries.asJsonArray.all {
+                        it.isJsonPrimitive && it.asJsonPrimitive.isString && it.asString.isNotBlank()
+                    }
+                }
+        }.getOrDefault(false)
+        require(valid) { "ICLASS_ACCESS_POLICY_JSON must contain schemaVersion=1, revision, studentIds and names as strict JSON" }
+    }
+
     defaultConfig {
+        buildConfigField("String", "ICLASS_ACCESS_POLICY_JSON", JsonOutput.toJson(accessPolicyJson))
         applicationId = "top.aidanrao.buaa_classhopper"
         minSdk = 28
         targetSdk = 34
@@ -90,6 +129,9 @@ dependencies {
     annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
     
     testImplementation(libs.junit)
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation("com.squareup.okhttp3:okhttp-tls:4.12.0")
+    testImplementation("org.mockito:mockito-core:5.12.0")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }

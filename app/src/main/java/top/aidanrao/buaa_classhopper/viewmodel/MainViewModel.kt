@@ -1,6 +1,7 @@
 package top.aidanrao.buaa_classhopper.viewmodel
 
 import android.util.Log
+import top.aidanrao.buaa_classhopper.data.model.dto.IclassLoginResult
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -20,7 +21,8 @@ import kotlinx.coroutines.withContext
 import okio.ByteString
 import top.aidanrao.buaa_classhopper.command.CommandDispatcher
 import top.aidanrao.buaa_classhopper.data.model.Result
-import top.aidanrao.buaa_classhopper.data.model.dto.CourseDto
+import top.aidanrao.buaa_classhopper.ui.HomeCourseState
+import top.aidanrao.buaa_classhopper.ui.HomeIdentity
 import top.aidanrao.buaa_classhopper.data.model.dto.UserInfoDto
 import top.aidanrao.buaa_classhopper.data.repository.AuthRepository
 import top.aidanrao.buaa_classhopper.data.repository.CourseRepository
@@ -40,17 +42,17 @@ class MainViewModel @Inject constructor(
     private val chatWebSocketService: ChatWebSocketService
 ) : ViewModel() {
 
-    private val _courses = MutableLiveData<List<CourseDto>>()
-    val courses: LiveData<List<CourseDto>> = _courses
+    private val _courseState = MutableLiveData<HomeCourseState>()
+    val courseState: LiveData<HomeCourseState> = _courseState
 
-    private val _userInfo = MutableLiveData<String>()
-    val userInfo: LiveData<String> = _userInfo
+    private val _userInfo = MutableLiveData<HomeIdentity>()
+    val userInfo: LiveData<HomeIdentity> = _userInfo
 
-    private val _isLoading = MutableLiveData<Boolean>()
-    val isLoading: LiveData<Boolean> = _isLoading
+    private val _signingIds = MutableLiveData<Set<Int>>(emptySet())
+    val signingIds: LiveData<Set<Int>> = _signingIds
 
-    private val _isEmpty = MutableLiveData<Boolean>()
-    val isEmpty: LiveData<Boolean> = _isEmpty
+    var selectedDate: String = java.time.LocalDate.now().toString()
+        private set
 
     private val _error = MutableLiveData<String>()
     val error: LiveData<String> = _error
@@ -111,9 +113,9 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun getClassInfo(studentId: String, date: String) {
-        if (studentId.isEmpty() || date.isEmpty()) {
-            _toastMessage.postValue("请输入学号和日期")
+    fun getClassInfo(date: String) {
+        if (date.isEmpty()) {
+            _toastMessage.postValue("请选择日期")
             return
         }
 
@@ -123,92 +125,67 @@ class MainViewModel @Inject constructor(
         }
 
         isRequestInProgress = true
-        _isLoading.postValue(true)
-        _isEmpty.postValue(false)
+        selectedDate = date
+        _courseState.value = HomeCourseState.Loading
+        _userInfo.value = HomeIdentity(null, null, null)
 
         viewModelScope.launch {
-            when (val loginResult = courseRepository.login(studentId)) {
+            when (val loginResult = courseRepository.login()) {
                 is Result.Success -> {
                     val loginData = loginResult.data.result
                     if (loginData != null) {
-                        _userInfo.postValue("${loginData.realName} - ${loginData.academyName}")
+                        _userInfo.value = HomeIdentity(loginData.realName, loginData.userName, loginData.academyName)
                         
                         val dateStr = date.replace("-", "")
-                        fetchCourseSchedule(loginData.id, loginData.sessionId, dateStr)
+                        fetchCourseSchedule(loginData, dateStr)
                     } else {
-                        _isLoading.postValue(false)
-                        _error.postValue(loginResult.data.ERRMSG ?: "登录失败")
-                        isRequestInProgress = false
+                        failQuery(loginResult.data.ERRMSG ?: "登录失败")
                     }
                 }
                 is Result.Error -> {
-                    if (courseRepository.isFallbackEnabledPublic() && authRepository.getValidToken() != null) {
-                        val dateStr = date.replace("-", "")
-                        fetchCourseScheduleFallback(dateStr)
-                    } else {
-                        _isLoading.postValue(false)
-                        _error.postValue(loginResult.getErrorMessage() ?: "登录失败")
-                        isRequestInProgress = false
-                    }
+                    failQuery(loginResult.getErrorMessage() ?: "登录失败")
                 }
                 Result.Loading -> {}
             }
         }
     }
 
-    private suspend fun fetchCourseSchedule(userId: String, sessionId: String, dateStr: String) {
-        when (val result = courseRepository.getCourseSchedule(userId, sessionId, dateStr)) {
+    private suspend fun fetchCourseSchedule(loginData: IclassLoginResult, dateStr: String) {
+        when (val result = courseRepository.getCourseSchedule(loginData, dateStr)) {
             is Result.Success -> {
-                _isLoading.postValue(false)
-                val courseList = result.data
-                if (courseList.isEmpty()) {
-                    _isEmpty.postValue(true)
-                } else {
-                    _courses.postValue(courseList)
-                }
+                _courseState.value = HomeCourseState.Success(result.data)
                 isRequestInProgress = false
             }
             is Result.Error -> {
-                _isLoading.postValue(false)
-                _error.postValue(result.getErrorMessage() ?: "获取课表失败")
-                isRequestInProgress = false
+                failQuery(result.getErrorMessage() ?: "获取课表失败")
             }
             Result.Loading -> {}
         }
     }
 
-    private suspend fun fetchCourseScheduleFallback(dateStr: String) {
-        when (val result = courseRepository.getCourseScheduleFallback(dateStr)) {
-            is Result.Success -> {
-                _isLoading.postValue(false)
-                val courseList = result.data
-                if (courseList.isEmpty()) {
-                    _isEmpty.postValue(true)
-                } else {
-                    _courses.postValue(courseList)
-                }
-                isRequestInProgress = false
-            }
-            is Result.Error -> {
-                _isLoading.postValue(false)
-                _error.postValue(result.getErrorMessage() ?: "获取课表失败")
-                isRequestInProgress = false
-            }
-            Result.Loading -> {}
-        }
+    private fun failQuery(message: String) {
+        _courseState.value = HomeCourseState.Error(message)
+        _error.value = message
+        isRequestInProgress = false
     }
 
-    fun signClass(studentId: String, courseId: Int, date: String) {
+    fun signClass(courseId: Int) {
+        val signing = _signingIds.value.orEmpty()
+        if (isRequestInProgress || signing.isNotEmpty()) return
+        _signingIds.value = signing + courseId
         viewModelScope.launch {
-            when (val result = courseRepository.signClass(studentId, courseId)) {
-                is Result.Success -> {
-                    _toastMessage.postValue("签到成功")
-                    getClassInfo(studentId, date)
+            try {
+                when (val result = courseRepository.signClass(courseId)) {
+                    is Result.Success -> {
+                        _toastMessage.value = "签到成功"
+                        // Refresh the currently selected day, even if it changed while signing.
+                        getClassInfo(selectedDate)
+                    }
+                    is Result.Error -> _error.value = result.getErrorMessage() ?: "签到失败"
+                    Result.Loading -> Unit
                 }
-                is Result.Error -> {
-                    _error.postValue(result.getErrorMessage() ?: "签到失败")
-                }
-                Result.Loading -> {}
+            } finally {
+                _signingIds.value = _signingIds.value.orEmpty() - courseId
             }
         }
     }

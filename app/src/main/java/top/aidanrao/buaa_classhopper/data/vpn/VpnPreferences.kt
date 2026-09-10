@@ -11,7 +11,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * 持有 VPN 相关的设置：开关、SSO 学号密码、VPN session cookie。
+ * 持有两种网络模式的 SSO 状态及历史 VPN Cookie。
  * 敏感字段使用 EncryptedSharedPreferences 加密保存。
  */
 @Singleton
@@ -23,7 +23,6 @@ class VpnPreferences @Inject constructor(
         private const val PLAIN_PREFS = "course_checkin_settings"
         private const val SECURE_PREFS = "vpn_secure_prefs"
 
-        const val KEY_VPN_ENABLED = "vpn_enabled"
         private const val KEY_SSO_USERNAME = "sso_username"
         private const val KEY_SSO_PASSWORD = "sso_password"
         private const val KEY_VPN_COOKIES = "vpn_cookies"
@@ -33,6 +32,22 @@ class VpnPreferences @Inject constructor(
         context.getSharedPreferences(PLAIN_PREFS, Context.MODE_PRIVATE)
 
     private val securePrefs: SharedPreferences by lazy { createSecurePrefs() }
+
+    // Login tokens must never use the legacy plaintext fallback.
+    private val iclassSessionPrefs: SharedPreferences by lazy {
+        val key = MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
+        EncryptedSharedPreferences.create(
+            context, "iclass_session_prefs", key,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }
+
+    fun getLoginName(vpn: Boolean): String? = iclassSessionPrefs.getString("login_name_$vpn", null)
+
+    fun saveLoginName(vpn: Boolean, loginName: String) {
+        iclassSessionPrefs.edit { putString("login_name_$vpn", loginName) }
+    }
 
     private fun createSecurePrefs(): SharedPreferences {
         return try {
@@ -53,9 +68,12 @@ class VpnPreferences @Inject constructor(
         }
     }
 
-    var isVpnEnabled: Boolean
-        get() = plainPrefs.getBoolean(KEY_VPN_ENABLED, false)
-        set(value) = plainPrefs.edit { putBoolean(KEY_VPN_ENABLED, value) }
+    fun isSessionReady(vpn: Boolean): Boolean = plainPrefs.getBoolean("sso_ready_$vpn", false)
+
+    fun setSessionReady(vpn: Boolean, ready: Boolean) {
+        if (!ready) iclassSessionPrefs.edit { remove("login_name_$vpn") }
+        plainPrefs.edit { putBoolean("sso_ready_$vpn", ready) }
+    }
 
     var ssoUsername: String?
         get() = securePrefs.getString(KEY_SSO_USERNAME, null)
